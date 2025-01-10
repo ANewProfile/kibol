@@ -1,5 +1,4 @@
 from qbreader import Sync as qbr
-import coolprint
 
 sync_client = qbr()
 
