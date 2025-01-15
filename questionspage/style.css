@@ -1,0 +1,31 @@
+body {
+    background-color: #222222;
+    color: white;
+}
+
+#leaderboard {
+    position: fixed; /* Keep it in place */
+    right: 0; /* Align to the left */
+    top: 0; /* Start from the top */
+    width: 250px; /* Set a width for the sidebar */
+    height: 100%; /* Full height of the viewport */
+    overflow-y: auto; /* Allow scrolling if content overflows */
+    background-color: #f8f9fa; /* Optional: Background color */
+    border-left: 1px solid #dee2e6; /* Optional: Border for separation */
+    z-index: 1000; /* Ensure it stays above other content */
+    color: #222222; /* Set the text color (so it's readable) */
+    text-align: center; /* Center the content */
+    padding: 20px; /* Add some padding */
+}
+
+#shortcuts {
+        position: fixed; /* Keep it in place */
+        bottom: 0; /* Align to the bottom */
+        left: 0; /* Start from the left */
+        right: 0; /* Stretch to the right */
+        display: flex; /* Use flexbox for horizontal stacking */
+        justify-content: space-around; /* Space items evenly */
+        align-items: center; /* Center items vertically */
+        padding: 10px; /* Optional: Add some padding */
+        z-index: 1000; /* Ensure it stays above other content */
+}
