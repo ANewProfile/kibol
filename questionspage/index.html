@@ -5,16 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Better QBReader</title>
     <link rel="stylesheet" href="style.css">
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.slim.min.js"
+      integrity="sha256-kmHvs0B+OpCW5GVHUNjv9rOmY0IvSIRcf7zGUDTDQM8="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"
+    ></script>
 </head>
 <body>
     <p id="question"></p>
     <p id="answer"></p>
+
+    <div id="answer-container">
+        <input type="text" id="answer" placeholder="Type your answer here...">
+    </div>
+
+    <div id="history">
+
+    </div>
     <div id="leaderboard">
         <label for="leaderboard"><b>Leaderboard</b></label>
     </div>
     <div id="shortcuts">
         <p class="shortcut">n - start/next</p>
         <p class="shortcut">space - buzz</p>
+        <p class="shortcut">enter - submit</p>
     </div>
 
     <script src="scripts.js"></script>

@@ -1,5 +1,4 @@
-answerChecker = require("qb-answer-checker");
-
-var returnDirective = (correct, answer) => {
+const checkAnswer = (correct, answer) => {
+    answerChecker = require("qb-answer-checker");
     return answerChecker.checkAnswer(correct, answer);
 }
