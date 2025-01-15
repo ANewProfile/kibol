@@ -1,4 +1,5 @@
+import { answerChecker } from "/node_modules/qb-answer-checker";
+
 const checkAnswer = (correct, answer) => {
-    answerChecker = require("qb-answer-checker");
     return answerChecker.checkAnswer(correct, answer);
 }

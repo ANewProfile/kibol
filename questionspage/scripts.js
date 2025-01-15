@@ -1,4 +1,5 @@
-const checkAnswer = require("./backendcode/getdirective.js");
+import { checkAnswer } from "../backendcode/getdirective.js";
+
 
 var question = "For 10 points, name this creator of Better QBReader.";
 var answer = "<b><u>Theo</u> Chen</b>";
@@ -32,7 +33,8 @@ $(document).ready(() => {
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
-                checkAnswer($('#answer-container').val(), answer);
+                var directive = checkAnswer(answer, $('#answer-container').val());
+                console.log(directive);
             }
         })
     }
