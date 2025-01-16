@@ -8,7 +8,7 @@ body {
     right: 0; /* Align to the left */
     top: 0; /* Start from the top */
     width: 250px; /* Set a width for the sidebar */
-    height: 100%; /* Full height of the viewport */
+    height: calc(100% - 20px); /* Full height of the viewport minus the margin */
     overflow-y: auto; /* Allow scrolling if content overflows */
     background-color: #f8f9fa; /* Optional: Background color */
     border-left: 1px solid #dee2e6; /* Optional: Border for separation */
@@ -16,6 +16,7 @@ body {
     color: #222222; /* Set the text color (so it's readable) */
     text-align: center; /* Center the content */
     padding: 20px; /* Add some padding */
+    margin-bottom: 20px; /* Adjust this value as needed */
 }
 
 #shortcuts {

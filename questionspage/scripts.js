@@ -1,6 +1,3 @@
-import { checkAnswer } from "../backendcode/getdirective.js";
-
-
 var question = "For 10 points, name this creator of Better QBReader.";
 var answer = "<b><u>Theo</u> Chen</b>";
 var questionArray = question.split(" ");
@@ -11,11 +8,13 @@ $(document).ready(() => {
     $('#answer-container').hide();
     
     var print = (words, i) => {
-        var question_elm = $('#question');
-        question_elm.append(words[i] + " ");
-    
-        if (i < words.length - 1) {
-            setTimeout(() => print(words, i + 1), 150);
+        if (reading) {
+            var question_elm = $('#question');
+            question_elm.append(words[i] + " ");
+        
+            if (i < words.length - 1) {
+                setTimeout(() => print(words, i + 1), 150);
+            }
         }
     }
     
@@ -26,6 +25,7 @@ $(document).ready(() => {
     
     var userBuzz = () => {
         buzzing = true;
+        reading = false;
         console.log('BEEEEP');
     
         // Show the answer container
@@ -33,7 +33,7 @@ $(document).ready(() => {
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
-                var directive = checkAnswer(answer, $('#answer-container').val());
+                var directive = answerChecker.checkAnswer(answer, $('#answer-container').val());
                 console.log(directive);
             }
         })
