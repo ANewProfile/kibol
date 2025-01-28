@@ -19,9 +19,9 @@ def get_bonuses():
     q1 = bonus.parts_sanitized[0]
     q2 = bonus.parts_sanitized[1]
     q3 = bonus.parts_sanitized[2]
-    a1 = bonus.answers_sanitized[0]
-    a2 = bonus.answers_sanitized[1]
-    a3 = bonus.answers_sanitized[2]
+    a1 = bonus.answers[0]
+    a2 = bonus.answers[1]
+    a3 = bonus.answers[2]
 
     return leadin, q1, q2, q3, a1, a2, a3
 
