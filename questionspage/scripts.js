@@ -64,21 +64,29 @@ $(document).ready(() => {
         var questionId = tossup["_id"];
         var questionArray = question.split(" ");
 
+        var startedReading = false;
         var reading = false;
         var buzzing = false;
 
         var print = (words, i) => {
-            if (reading) {
-                var question_elm = $('#question');
-                question_elm.append(words[i] + " ");
-
-                if (i < words.length - 1) {
-                    setTimeout(() => print(words, i + 1), 150);
+            var readWord = false;
+            while (!readWord) {
+                if (reading) {
+                    var questionElm = $('#question');
+                    questionElm.append(words[i] + " ");
+                    readWord = true;
+    
+                    if (i < words.length - 1) {
+                        setTimeout(() => print(words, i + 1), 150);
+                    }
+                } else {
+                    continue;
                 }
             }
         }
 
         var readQuestion = () => {
+            startedReading = true;
             reading = true;
             print(questionArray, 0);
         }
@@ -86,6 +94,8 @@ $(document).ready(() => {
         var userBuzz = () => {
             buzzing = true;
             reading = false;
+            var actionsElm = $('#actions');
+            actionsElm.append("BUZZ! ");
 
             // Show the answer container
             $('#answer-container').show();
@@ -93,17 +103,23 @@ $(document).ready(() => {
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
                     checkAnswer(questionId, $('#answer-container').val(), function (data) {
-                        directive = data["directive"];
-                        directedPrompt = data["directedPrompt"];
+                        var directive = data["directive"];
+                        var directedPrompt = data["directedPrompt"];
                         console.log(directive, directedPrompt);
                     });
+
+                    // Hide the answer container
+                    $('#answer-container').hide();
+
+                    // Resume reading the question
+
                 }
             })
         }
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'n') {
-                if (!reading) { readQuestion() }
+                if (!startedReading) { readQuestion() }
             } else if (event.key === ' ') {
                 if (!buzzing) { userBuzz() }
             }

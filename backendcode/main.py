@@ -31,12 +31,9 @@ def bonus():
 @cross_origin()
 def checkanswer():
     question_id = request.args.get('questionid')  # get question id from query 
-    print("GETTING QUESTION ID", question_id)
     question_obj = requests.get("https://qbreader.org/api/tossup-by-id", params={'id': question_id}).json()['tossup']  # get question object from API
 
     correct_ans = question_obj['answer']  # get correct answer from question_obj
     user_input = request.args.get('guess')  # get user input from query
-    print("GETTING USER INPUT AND ANSWERS")
-    print(correct_ans, user_input)
 
     return json.dumps(ac.check_answer(user_input, correct_ans))

@@ -5,7 +5,7 @@ body {
 
 #leaderboard {
     position: fixed; /* Keep it in place */
-    right: 0; /* Align to the left */
+    right: 0; /* Align to the right */
     top: 0; /* Start from the top */
     width: 250px; /* Set a width for the sidebar */
     height: calc(100% - 20px); /* Full height of the viewport minus the margin */
@@ -19,14 +19,18 @@ body {
     margin-bottom: 20px; /* Adjust this value as needed */
 }
 
+#questions-box {
+    margin-right: 270px; /* Add margin to the right to account for the leaderboard width and some padding */
+}
+
 #shortcuts {
-        position: fixed; /* Keep it in place */
-        bottom: 0; /* Align to the bottom */
-        left: 0; /* Start from the left */
-        right: 0; /* Stretch to the right */
-        display: flex; /* Use flexbox for horizontal stacking */
-        justify-content: space-evenly; /* Space items evenly */
-        align-items: center; /* Center items vertically */
-        padding: 10px; /* Optional: Add some padding */
-        z-index: 1000; /* Ensure it stays above other content */
+    position: fixed; /* Keep it in place */
+    bottom: 0; /* Align to the bottom */
+    left: 0; /* Start from the left */
+    right: 0; /* Stretch to the right */
+    display: flex; /* Use flexbox for horizontal stacking */
+    justify-content: space-evenly; /* Space items evenly */
+    align-items: center; /* Center items vertically */
+    padding: 10px; /* Optional: Add some padding */
+    z-index: 1000; /* Ensure it stays above other content */
 }
