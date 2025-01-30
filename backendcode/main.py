@@ -1,4 +1,4 @@
-# Import flask.Flask and flask.request
+# Import flask and flask_cors
 from flask import Flask, request
 from flask_cors import CORS, cross_origin
 
@@ -12,16 +12,16 @@ import requests
 
 
 app = Flask(__name__)  # Create Flask app
-cors = CORS(app)
+CORS(app)  # Apply CORS to the entire app
 app.config['CORS_HEADERS'] = 'Content-Type'
 
-@app.route('/tossup')  # Random tossup
+@app.route('/tossup', methods=['GET'])  # Random tossup
 @cross_origin()
 def tossup():
     tossup = gc.get_tossup()  # Get tossup
     return json.dumps(tossup)
 
-@app.route('/bonus')  # Random bonus
+@app.route('/bonus', methods=['GET'])  # Random bonus
 @cross_origin()
 def bonus():
     bonus = gc.get_bonuses()  # Get bonuses
