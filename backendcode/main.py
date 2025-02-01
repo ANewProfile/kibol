@@ -20,11 +20,13 @@ def tossup():
     return json.dumps(tossup)
 
 @app.route('/bonus', methods=['GET'])  # Random bonus
+@cross_origin(origin='127.0.0.1',headers=['Content-Type','Authorization'])
 def bonus():
     bonus = gc.get_bonuses()  # Get bonuses
     return json.dumps(bonus)
 
 @app.route('/checkanswer', methods=['GET'])  # Check answer
+@cross_origin(origin='127.0.0.1',headers=['Content-Type','Authorization'])
 def checkanswer():
     question_id = request.args.get('questionid')  # get question id from query 
     question_obj = requests.get("https://qbreader.org/api/tossup-by-id", params={'id': question_id}).json()['tossup']  # get question object from API
