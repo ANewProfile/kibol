@@ -1,4 +1,4 @@
-# Quiz Bull
+# Keebol
 
 A tool for Quiz Bowl students to practice like they're in a real-world competition implementing both tossups and bonuses to simulate a competition experience.
 
