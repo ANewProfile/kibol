@@ -84,6 +84,7 @@ $(document).ready(() => {
                     setTimeout(() => print(words), 200);
                 } else {
                     reading = false;
+                    buzzable = true;
                 }
             }
         }
@@ -151,7 +152,7 @@ $(document).ready(() => {
                 if (!buzzing) { if(reading) { userBuzz() } }
             } else if (event.key === 'p') {
                 if (!buzzing) {
-                    if(reading) { reading = false; }
+                    if(reading || buzzable) { reading = false; }
                     else if(!reading) { reading = true; }
                 }
             }
