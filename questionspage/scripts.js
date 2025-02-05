@@ -8,7 +8,8 @@ function getTossup(cb) {
             cb(data);
         },
         error: function (error) {
-            console.error('Error:', error);
+            // console.error('Error:', error);
+            console.log("unsuccessful")
         }
     });
 }
@@ -99,7 +100,7 @@ $(document).ready(() => {
             buzzing = true;
             reading = false;
             var actionsElm = $('#actions');
-            actionsElm.append("<p>buzzed</p><br>"+actionsElm.html());
+            actionsElm.append("<p>buzzed</p>"+actionsElm.html());
 
             // Show the answer container
             $('#answer-container').show();
@@ -110,6 +111,7 @@ $(document).ready(() => {
                         var directive = data["directive"];
                         var directedPrompt = data["directedPrompt"];
                         console.log(directive, directedPrompt);
+                        console.log(data["answer"]);
 
                         if (directive === "accept") {
                             // Hide answer container
@@ -117,25 +119,25 @@ $(document).ready(() => {
                             
                             // Tell the user they answered correctly
                             var answered = `Answered: ${$('#answer-input').val()}`;
-                            actionsElm.append(`<p>${answered}</p><br>`+actionsElm.html());
-                            actionsElm.append("<p>Answered correctly for 10 points</p><br>"+actionsElm.html());
+                            actionsElm.append(`<p>${answered}</p>`+actionsElm.html());
+                            actionsElm.append("<p>Answered correctly for 10 points</p>"+actionsElm.html());
                         } else if (directive === "prompt") {
                             // Tell the user they need to prompt
                             var answered = `Answered: ${$('#answer-input').val()}`;
-                            actionsElm.append(`<p>${answered}</p><br>`+actionsElm.html());
+                            actionsElm.append(`<p>${answered}</p>`+actionsElm.html());
                             if (directedPrompt) {
                                 var prompt = `Prompt: ${directedPrompt}`
-                                actionsElm.append(`<p>${prompt}</p><br>`+actionsElm.html());
+                                actionsElm.append(`<p>${prompt}</p>`+actionsElm.html());
                             }
-                            actionsElm.append("<p>prompted</p><br>"+actionsElm.html());
+                            actionsElm.append("<p>prompted</p>"+actionsElm.html());
                         } else if (directive === "reject") {
                             // Hide answer container
                             $('#answer-container').hide();
 
                             // Tell the user they answered incorrectly
                             var answered = `Answered: ${$('#answer-input').val()}`;
-                            actionsElm.append(`<p>${answered}</p><br>`+actionsElm.html());
-                            actionsElm.append("<p>Answered incorrectly for no penalty</p><br>"+actionsElm.html());
+                            actionsElm.append(`<p>${answered}</p>`+actionsElm.html());
+                            actionsElm.append("<p>Answered incorrectly for no penalty</p>"+actionsElm.html());
                         }
                     });
 
