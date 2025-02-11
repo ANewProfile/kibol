@@ -1,7 +1,11 @@
 import requests
 
 def get_tossup():
-    tossup = requests.get("https://qbreader.org/api/random-tossup").json()["tossups"][0]
+    data = {
+        "difficulty": [2, 3, 4, 5],
+        "powermarkOnly": False,
+    }
+    tossup = requests.get("https://qbreader.org/api/random-tossup", params=data).json()["tossups"][0]
     return tossup
 
 def get_bonuses():

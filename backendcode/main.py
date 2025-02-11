@@ -33,6 +33,7 @@ def checkanswer():
 
     correct_ans = question_obj['answer']  # get correct answer from question_obj
     user_input = request.args.get('guess')  # get user input from query
+    print('user input:', user_input)
 
     return json.dumps(ac.check_answer(user_input, correct_ans))
 

@@ -56,6 +56,11 @@ var checkAnswer = (questionId, guess, cb) => {
 
 $(document).ready(() => {
     $('#answer-container').hide();
+    var startedReading = false;
+    var reading = false;
+    var buzzing = false;
+    var wordindex = 0;
+    var beforePower = true;
 
 
     var tossup = getTossup(function (tossup) {
@@ -64,12 +69,6 @@ $(document).ready(() => {
         var answer = tossup["answer"];
         var questionId = tossup["_id"];
         var questionArray = question.split(" ");
-
-        var startedReading = false;
-        var reading = false;
-        var buzzing = false;
-        var wordindex = 0;
-        var beforePower = true;
 
 
         var print = (words) => {
@@ -100,18 +99,21 @@ $(document).ready(() => {
             buzzing = true;
             reading = false;
             var actionsElm = $('#actions');
-            actionsElm.append("<p>buzzed</p>"+actionsElm.html());
+            actionsElm.prepend("<p>buzzed</p>");
+            var answerElm = $('#answer');
+            
 
             // Show the answer container
             $('#answer-container').show();
 
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
-                    checkAnswer(questionId, $('#answer-container').val(), function (data) {
+                    checkAnswer(questionId, $('#answer-input').val(), function (data) {
                         var directive = data["directive"];
                         var directedPrompt = data["directedPrompt"];
                         console.log(directive, directedPrompt);
                         console.log(data["answer"]);
+                        
 
                         if (directive === "accept") {
                             // Hide answer container
@@ -119,45 +121,51 @@ $(document).ready(() => {
                             
                             // Tell the user they answered correctly
                             var answered = `Answered: ${$('#answer-input').val()}`;
-                            actionsElm.append(`<p>${answered}</p>`+actionsElm.html());
-                            actionsElm.append("<p>Answered correctly for 10 points</p>"+actionsElm.html());
+                            actionsElm.prepend(`<p>${answered}</p>`);
+                            if (beforePower) {
+                                actionsElm.prepend("<p>Answered correctly for 15 points</p>");
+                            } else {
+                                actionsElm.prepend("<p>Answered correctly for 10 points</p>");
+                            }
+                            answerElm.html(answer);
+
+                            reading = false;
+                            startedReading = false;
+                            $('#question').html(question);
                         } else if (directive === "prompt") {
                             // Tell the user they need to prompt
                             var answered = `Answered: ${$('#answer-input').val()}`;
-                            actionsElm.append(`<p>${answered}</p>`+actionsElm.html());
+                            actionsElm.prepend(`<p>${answered}</p>`);
+                            actionsElm.prepend("<p>prompted</p>");
                             if (directedPrompt) {
                                 var prompt = `Prompt: ${directedPrompt}`
-                                actionsElm.append(`<p>${prompt}</p>`+actionsElm.html());
+                                actionsElm.prepend(`<p>${prompt}</p>`);
                             }
-                            actionsElm.append("<p>prompted</p>"+actionsElm.html());
                         } else if (directive === "reject") {
                             // Hide answer container
                             $('#answer-container').hide();
 
                             // Tell the user they answered incorrectly
                             var answered = `Answered: ${$('#answer-input').val()}`;
-                            actionsElm.append(`<p>${answered}</p>`+actionsElm.html());
-                            actionsElm.append("<p>Answered incorrectly for no penalty</p>"+actionsElm.html());
+                            actionsElm.prepend(`<p>${answered}</p>`);
+                            actionsElm.prepend("<p>Answered incorrectly for no penalty</p>");
+                            answerElm.html(answer);
+
+                            reading = false;
+                            startedReading = false;
+                            $('#question').html(question);
                         }
                     });
-
-                    // Resume reading the question
-                    readQuestion();
                 }
-            })
+            });
         }
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'n') {
-                if (!startedReading) { readQuestion() }
-            } else if (event.key === ' ') {
-                if (!buzzing) { if(reading) { userBuzz() } }
-            } else if (event.key === 'p') {
-                if (!buzzing) {
-                    if(reading || buzzable) { reading = false; }
-                    else if(!reading) { reading = true; }
-                }
-            }
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'n') {
+            if (!startedReading) { readQuestion() }
+        } else if (event.key === ' ') {
+            if (!buzzing) { if(reading) { userBuzz() } }
         }
+    }
     )});
 });

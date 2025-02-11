@@ -34,3 +34,8 @@ body {
     padding: 10px; /* Optional: Add some padding */
     z-index: 1000; /* Ensure it stays above other content */
 }
+
+#actions p {
+    margin: 0;
+    padding: 0;
+}
