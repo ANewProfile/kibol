@@ -9,9 +9,15 @@ import answerchecker as ac
 import json
 import requests
 
+
 app = Flask(__name__)  # Create Flask app
 CORS(app, resources={r"/tossup": {"origins": "http://127.0.0.1:5500"}})
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+rooms = {
+    'public': 0
+}  # List of active rooms
+
 
 @app.route('/tossup', methods=['GET'])  # Random tossup
 @cross_origin(origin='127.0.0.1',headers=['Content-Type','Authorization'])
@@ -36,6 +42,16 @@ def checkanswer():
     print('user input:', user_input)
 
     return json.dumps(ac.check_answer(user_input, correct_ans))
+
+@app.route('/checkroomexists', methods=['GET'])  # Check if room exists
+@cross_origin(origin='127.0.0.1', headers=['Content-Type', 'Authorization'])
+def checkroomexists():
+    room_id = request.args.get('roomid')  # get room id from query
+    if rooms.__contains__(room_id):
+        return json.dumps({'exists': True, 'users': rooms[room_id]})
+    else:
+        return json.dumps({'exists': False})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
