@@ -1,57 +1,17 @@
-function getTossup(cb) {
-    $.ajax({
-        url: 'http://127.0.0.1:5000/tossup',
-        type: 'GET',
-        dataType: 'json',
-        success: function (data) {
-            console.log("success!")
-            cb(data);
-        },
-        error: function (error) {
-            // console.error('Error:', error);
-            console.log("unsuccessful")
-        }
-    });
+async function getTossup(cb) {
+    const response = await fetch('http://localhost:3000/tossup');
+    const fullData = await response.json();
+    const readableData = fullData["tossups"][0];
+    cb(readableData);
 }
 
-var getBonus = () => {
-    $.ajax({
-        url: 'http://127.0.0.1:5000/bonus',
-        type: 'GET',
-        dataType: 'json',
-        success: function (data) {
-            return {
-                "leadin": data[0],
-                "q1": data[1],
-                "q2": data[2],
-                "q3": data[3],
-                "a1": data[4],
-                "a2": data[5],
-                "a3": data[6],
-            };
-        },
-        error: function (error) {
-            console.error('Error:', error);
-        }
-    });
-}
+async function checkAnswer(questionId, guess, cb) {
+    console.log(`questionId: ${questionId}`);
+    console.log(`guess: ${guess}`);
 
-var checkAnswer = (questionId, guess, cb) => {
-    $.ajax({
-        url: `http://127.0.0.1:5000/checkanswer`,
-        type: 'GET',
-        dataType: 'json',
-        data: {
-            "questionid": questionId,
-            "guess": guess,
-        },
-        success: function (data) {
-            cb(data);
-        },
-        error: function (error) {
-            console.error('Error:', error);
-        }
-    });
+    const response = await fetch(`http://localhost:3000/checkanswer?questionid=${questionId}&guess=${guess}`);
+    const data = await response.json();
+    cb(data);
 }
 
 $(document).ready(() => {
@@ -77,57 +37,58 @@ $(document).ready(() => {
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 checkAnswer(questionId, $('#answer-input').val(), function (data) {
+                    console.log(`data: ${data}`);
                     var directive = data["directive"];
                     var directedPrompt = data["directedPrompt"];
-                    console.log(directive, directedPrompt);
-                    console.log(data["answer"]);
+                    // console.log(directive, directedPrompt);
+                    // console.log(data["answer"]);
                     
-                    if (directive === "accept") {
-                        // Hide answer container
-                        $('#answer-container').hide();
+                    // if (directive === "accept") {
+                    //     // Hide answer container
+                    //     $('#answer-container').hide();
                         
-                        // Tell the user they answered correctly
-                        var answered = `Answered: ${$('#answer-input').val()}`;
-                        actionsElm.prepend(`<p>${answered}</p>`);
-                        if (beforePower) {
-                            actionsElm.prepend("<p>Answered correctly for 15 points</p>");
-                        } else {
-                            actionsElm.prepend("<p>Answered correctly for 10 points</p>");
-                        }
-                        answerElm.html(answer);
+                    //     // Tell the user they answered correctly
+                    //     var answered = `Answered: ${$('#answer-input').val()}`;
+                    //     actionsElm.prepend(`<p>${answered}</p>`);
+                    //     if (beforePower) {
+                    //         actionsElm.prepend("<p>Answered correctly for 15 points</p>");
+                    //     } else {
+                    //         actionsElm.prepend("<p>Answered correctly for 10 points</p>");
+                    //     }
+                    //     answerElm.html(answer);
 
-                        reading = false;
-                        startedReading = false;
-                        $('#question').html(question);
-                        console.log("added " + question + " to page");
+                    //     reading = false;
+                    //     startedReading = false;
+                    //     $('#question').html(question);
+                    //     console.log("added " + question + " to page");
 
-                        buzzing = false;
-                    } else if (directive === "prompt") {
-                        // Tell the user they need to prompt
-                        var answered = `Answered: ${$('#answer-input').val()}`;
-                        actionsElm.prepend(`<p>${answered}</p>`);
-                        actionsElm.prepend("<p>prompted</p>");
-                        if (directedPrompt) {
-                            var prompt = `Prompt: ${directedPrompt}`
-                            actionsElm.prepend(`<p>${prompt}</p>`);
-                        }
-                    } else if (directive === "reject") {
-                        // Hide answer container
-                        $('#answer-container').hide();
+                    //     buzzing = false;
+                    // } else if (directive === "prompt") {
+                    //     // Tell the user they need to prompt
+                    //     var answered = `Answered: ${$('#answer-input').val()}`;
+                    //     actionsElm.prepend(`<p>${answered}</p>`);
+                    //     actionsElm.prepend("<p>prompted</p>");
+                    //     if (directedPrompt) {
+                    //         var prompt = `Prompt: ${directedPrompt}`
+                    //         actionsElm.prepend(`<p>${prompt}</p>`);
+                    //     }
+                    // } else if (directive === "reject") {
+                    //     // Hide answer container
+                    //     $('#answer-container').hide();
 
-                        // Tell the user they answered incorrectly
-                        var answered = `Answered: ${$('#answer-input').val()}`;
-                        actionsElm.prepend(`<p>${answered}</p>`);
-                        actionsElm.prepend("<p>Answered incorrectly for no penalty</p>");
-                        answerElm.html(answer);
+                    //     // Tell the user they answered incorrectly
+                    //     var answered = `Answered: ${$('#answer-input').val()}`;
+                    //     actionsElm.prepend(`<p>${answered}</p>`);
+                    //     actionsElm.prepend("<p>Answered incorrectly for no penalty</p>");
+                    //     answerElm.html(answer);
 
-                        reading = false;
-                        startedReading = false;
-                        $('#question').html(question);
-                        console.log("added " + question + " to page");
+                    //     reading = false;
+                    //     startedReading = false;
+                    //     $('#question').html(question);
+                    //     console.log("added " + question + " to page");
 
-                        buzzing = false;
-                    }
+                    //     buzzing = false;
+                    // }
                 });
             }
         });
@@ -137,6 +98,7 @@ $(document).ready(() => {
         if (event.key === 'n') {
             if (!startedReading) {
                 getTossup(function (tossup) {
+                    console.log(`tossup: ${tossup}`);
                     var question = tossup["question"];
                     answer = tossup["answer"];
                     questionId = tossup["_id"];
@@ -183,4 +145,6 @@ $(document).ready(() => {
             else if (!reading) { console.log('not reading question') }
         }
     })
+
+    // test();
 });
