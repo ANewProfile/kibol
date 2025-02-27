@@ -21,7 +21,9 @@ app.get('/checkanswer', (req, res) => {
         }
 
         const tossupById = JSON.parse(body);
-        const tossupAnswer = tossupById["answer"];
+        // console.log(`tossupById: ${JSON.stringify(tossupById)}`);
+        const tossupAnswer = tossupById["tossup"]["answer"];
+        console.log(`tossupAnswer: ${tossupAnswer}`);
         const guess = req.query.guess;
 
         const directiveResponseURL = 'https://qbreader.org/api/check-answer?answerline=' + tossupAnswer + '&givenAnswer=' + guess;
@@ -32,13 +34,7 @@ app.get('/checkanswer', (req, res) => {
             }
 
             const directiveResponse = JSON.parse(body);
-            const returnData = {
-                "directive": directiveResponse["directive"],
-                "directedPrompt": directiveResponse["directedPrompt"],
-                "answer": tossupAnswer
-            };
-
-            res.json(returnData);
+            res.json(directiveResponse);
         });
     });
 });

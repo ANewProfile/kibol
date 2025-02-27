@@ -6,9 +6,6 @@ async function getTossup(cb) {
 }
 
 async function checkAnswer(questionId, guess, cb) {
-    console.log(`questionId: ${questionId}`);
-    console.log(`guess: ${guess}`);
-
     const response = await fetch(`http://localhost:3000/checkanswer?questionid=${questionId}&guess=${guess}`);
     const data = await response.json();
     cb(data);
@@ -35,60 +32,58 @@ $(document).ready(() => {
         $('#answer-container').show();
 
         document.addEventListener('keydown', (event) => {
+            if (!buzzing) { return; }
+
             if (event.key === 'Enter') {
                 checkAnswer(questionId, $('#answer-input').val(), function (data) {
-                    console.log(`data: ${data}`);
                     var directive = data["directive"];
                     var directedPrompt = data["directedPrompt"];
                     // console.log(directive, directedPrompt);
-                    // console.log(data["answer"]);
                     
-                    // if (directive === "accept") {
-                    //     // Hide answer container
-                    //     $('#answer-container').hide();
+                    if (directive === "accept") {
+                        // Hide answer container
+                        $('#answer-container').hide();
                         
-                    //     // Tell the user they answered correctly
-                    //     var answered = `Answered: ${$('#answer-input').val()}`;
-                    //     actionsElm.prepend(`<p>${answered}</p>`);
-                    //     if (beforePower) {
-                    //         actionsElm.prepend("<p>Answered correctly for 15 points</p>");
-                    //     } else {
-                    //         actionsElm.prepend("<p>Answered correctly for 10 points</p>");
-                    //     }
-                    //     answerElm.html(answer);
+                        // Tell the user they answered correctly
+                        var answered = `Answered: ${$('#answer-input').val()}`;
+                        actionsElm.prepend(`<p>${answered}</p>`);
+                        if (beforePower) {
+                            actionsElm.prepend("<p>Answered correctly for 15 points</p>");
+                        } else {
+                            actionsElm.prepend("<p>Answered correctly for 10 points</p>");
+                        }
+                        answerElm.html(answer);
 
-                    //     reading = false;
-                    //     startedReading = false;
-                    //     $('#question').html(question);
-                    //     console.log("added " + question + " to page");
+                        reading = false;
+                        startedReading = false;
+                        $('#question').html(question);
 
-                    //     buzzing = false;
-                    // } else if (directive === "prompt") {
-                    //     // Tell the user they need to prompt
-                    //     var answered = `Answered: ${$('#answer-input').val()}`;
-                    //     actionsElm.prepend(`<p>${answered}</p>`);
-                    //     actionsElm.prepend("<p>prompted</p>");
-                    //     if (directedPrompt) {
-                    //         var prompt = `Prompt: ${directedPrompt}`
-                    //         actionsElm.prepend(`<p>${prompt}</p>`);
-                    //     }
-                    // } else if (directive === "reject") {
-                    //     // Hide answer container
-                    //     $('#answer-container').hide();
+                        buzzing = false;
+                    } else if (directive === "prompt") {
+                        // Tell the user they need to prompt
+                        var answered = `Answered: ${$('#answer-input').val()}`;
+                        actionsElm.prepend(`<p>${answered}</p>`);
+                        actionsElm.prepend("<p>prompted</p>");
+                        if (directedPrompt) {
+                            var prompt = `Prompt: ${directedPrompt}`
+                            actionsElm.prepend(`<p>${prompt}</p>`);
+                        }
+                    } else if (directive === "reject") {
+                        // Hide answer container
+                        $('#answer-container').hide();
 
-                    //     // Tell the user they answered incorrectly
-                    //     var answered = `Answered: ${$('#answer-input').val()}`;
-                    //     actionsElm.prepend(`<p>${answered}</p>`);
-                    //     actionsElm.prepend("<p>Answered incorrectly for no penalty</p>");
-                    //     answerElm.html(answer);
+                        // Tell the user they answered incorrectly
+                        var answered = `Answered: ${$('#answer-input').val()}`;
+                        actionsElm.prepend(`<p>${answered}</p>`);
+                        actionsElm.prepend("<p>Answered incorrectly for no penalty</p>");
+                        answerElm.html(answer);
 
-                    //     reading = false;
-                    //     startedReading = false;
-                    //     $('#question').html(question);
-                    //     console.log("added " + question + " to page");
+                        reading = false;
+                        startedReading = false;
+                        $('#question').html(question);
 
-                    //     buzzing = false;
-                    // }
+                        buzzing = false;
+                    }
                 });
             }
         });
@@ -98,7 +93,6 @@ $(document).ready(() => {
         if (event.key === 'n') {
             if (!startedReading) {
                 getTossup(function (tossup) {
-                    console.log(`tossup: ${tossup}`);
                     var question = tossup["question"];
                     answer = tossup["answer"];
                     questionId = tossup["_id"];
@@ -141,8 +135,6 @@ $(document).ready(() => {
             }
         } else if (event.key === ' ') {
             if (!buzzing) { if(reading) { userBuzz() } }
-            else if (buzzing) { console.log('already buzzing') }
-            else if (!reading) { console.log('not reading question') }
         }
     })
 
