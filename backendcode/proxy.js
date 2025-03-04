@@ -21,7 +21,7 @@ app.get('/checkanswer', (req, res) => {
         }
 
         const tossupById = JSON.parse(body);
-        // console.log(`tossupById: ${JSON.stringify(tossupById)}`);
+        console.log(`tossupById: ${JSON.stringify(tossupById)}`);
         const tossupAnswer = tossupById["tossup"]["answer"];
         console.log(`tossupAnswer: ${tossupAnswer}`);
         const guess = req.query.guess;
