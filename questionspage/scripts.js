@@ -6,15 +6,24 @@ async function getTossup(cb) {
 }
 
 async function checkAnswer(questionId, guess, cb) {
+    console.log(`questionId: ${questionId}, guess: ${guess}`);
     const response = await fetch(`http://localhost:3000/checkanswer?questionid=${questionId}&guess=${guess}`);
     const data = await response.json();
     cb(data);
 }
 
+function removePrefix(text, prefix) {
+    if (text.startsWith(prefix)) {
+      return text.slice(prefix.length);
+    }
+    return text;
+  }
+
 $(document).ready(() => {
     $('#answer-container').hide();
     var startedReading = false;
     var reading = false;
+    var buzzable = false;
     var buzzing = false;
     var wordindex = 0;
     var beforePower = true;
@@ -22,6 +31,7 @@ $(document).ready(() => {
     var answer;
 
     var userBuzz = () => {
+        buzzable = false;
         buzzing = true;
         reading = false;
         var actionsElm = $('#actions');
@@ -35,6 +45,7 @@ $(document).ready(() => {
         if (!buzzing) { return; }
 
         if (event.key === 'Enter') {
+            console.log(`questionId: ${questionId}`);
             checkAnswer(questionId, $('#answer-input').val(), function (data) {
                 var actionsElm = $('#actions');
                 var answerElm = $('#answer');
@@ -95,16 +106,19 @@ $(document).ready(() => {
         if (event.key === 'n') {
             if (!startedReading) {
                 getTossup(function (tossup) {
-                    var question = tossup["question"];
-                    answer = tossup["answer"];
+                    const question = removePrefix(tossup["question"], "<b>");
+                    const answer = tossup["answer"];
+                    console.log(answer)
                     questionId = tossup["_id"];
-                    var questionArray = question.split(" ")
+                    console.log(`questionId: ${questionId}`);
+                    const questionArray = question.split(" ")
 
                     var print = (words) => {
                         if (reading) {
                             var questionElm = $('#question');
                             if (words[wordindex]) {
-                                if (words[wordindex] === "(*)") { beforePower = false; }
+                                // console.log(words[wordindex])
+                                if (words[wordindex] === "(*)</b>") { beforePower = false; }
                                 else { questionElm.append(words[wordindex] + " "); }
                             }
                             wordindex += 1;
@@ -121,6 +135,7 @@ $(document).ready(() => {
                     var readQuestion = () => {
                         startedReading = true;
                         reading = true;
+                        buzzable = true;
                         wordindex = 0;
                 
                         $('#question').html("")
@@ -136,7 +151,7 @@ $(document).ready(() => {
                 });
             }
         } else if (event.key === ' ') {
-            if (!buzzing) { if(reading) { userBuzz() } }
+            if(buzzable) { userBuzz() }
         }
     })
 
