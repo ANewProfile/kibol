@@ -23,9 +23,9 @@ app.get('/checkanswer', (req, res) => {
         const tossupById = JSON.parse(body);
         const tossupAnswer = tossupById["tossup"]["answer"];
         console.log(`tossupAnswer: ${tossupAnswer}`);
-        const guess = req.query.guess;
+        const guess = encodeURIComponent(req.query.guess); // Encode the guess parameter
 
-        const directiveResponseURL = 'https://qbreader.org/api/check-answer?answerline=' + tossupAnswer + '&givenAnswer=' + guess;
+        const directiveResponseURL = 'https://qbreader.org/api/check-answer?answerline=' + encodeURIComponent(tossupAnswer) + '&givenAnswer=' + guess;
 
         request(directiveResponseURL, (error, response, body) => {
             if (error) {

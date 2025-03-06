@@ -6,7 +6,6 @@ async function getTossup(cb) {
 }
 
 async function checkAnswer(questionId, guess, cb) {
-    console.log(`questionId: ${questionId}, guess: ${guess}`);
     const response = await fetch(`http://localhost:3000/checkanswer?questionid=${questionId}&guess=${guess}`);
     const data = await response.json();
     cb(data);
@@ -45,7 +44,6 @@ $(document).ready(() => {
         if (!buzzing) { return; }
 
         if (event.key === 'Enter') {
-            console.log(`questionId: ${questionId}`);
             checkAnswer(questionId, $('#answer-input').val(), function (data) {
                 var actionsElm = $('#actions');
                 var answerElm = $('#answer');
@@ -110,7 +108,6 @@ $(document).ready(() => {
                     const answer = tossup["answer"];
                     console.log(answer)
                     questionId = tossup["_id"];
-                    console.log(`questionId: ${questionId}`);
                     const questionArray = question.split(" ")
 
                     var print = (words) => {
