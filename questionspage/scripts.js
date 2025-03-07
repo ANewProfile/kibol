@@ -1,4 +1,4 @@
-// Fetches a random tossup question from the server
+// API Functions
 async function getTossup(cb) {
     const response = await fetch('http://localhost:3000/tossup');
     const fullData = await response.json();
@@ -6,165 +6,158 @@ async function getTossup(cb) {
     cb(readableData);
 }
 
-// Validates the user's answer against the correct answer
 async function checkAnswer(questionId, guess, cb) {
     const response = await fetch(`http://localhost:3000/checkanswer?questionid=${questionId}&guess=${guess}`);
     const data = await response.json();
     cb(data);
 }
 
-// Removes HTML formatting prefix from question text
+// Utility Functions
 function removePrefix(text, prefix) {
     if (text.startsWith(prefix)) {
-      return text.slice(prefix.length);
+        return text.slice(prefix.length);
     }
     return text;
 }
 
+// Main Application
 $(document).ready(() => {
-    // Initialize game state variables
-    $('#answer-container').hide();
-    var startedReading = false;
-    var reading = false;
-    var buzzable = false;
-    var buzzing = false;
-    var wordindex = 0;
-    var beforePower = true;
-    var questionId;
-    var answer;
-    var question;
+    // State Variables
+    let state = {
+        startedReading: false,
+        reading: false,
+        buzzable: false,
+        buzzing: false,
+        wordindex: 0,
+        beforePower: true,
+        questionId: null,
+        answer: null,
+        question: null
+    };
 
-    // Handles user buzz action - stops reading and shows answer input
-    var userBuzz = () => {
-        buzzable = false;
-        buzzing = true;
-        reading = false;
-        var actionsElm = $('#actions');
-        actionsElm.prepend("<p>buzzed</p>");
-        console.log(answer)
-        
-        // Show the answer container and focus on input
-        $('#answer-container').show();
-        $('#answer-input').focus();
-    }
+    // UI Elements
+    const elements = {
+        answerContainer: $('#answer-container'),
+        answerInput: $('#answer-input'),
+        question: $('#question'),
+        answer: $('#answer'),
+        actions: $('#actions')
+    };
 
-    // Event listener for answer submission (Enter key)
-    document.addEventListener('keydown', (event) => {
-        if (!buzzing) { return; }
+    // Initialize UI
+    elements.answerContainer.hide();
 
-        if (event.key === 'Enter') {
-            // Store the answer before clearing the input
-            const userAnswer = $('#answer-input').val();
-            
-            // Clear the answer input field
-            $('#answer-input').val('');
-            
-            checkAnswer(questionId, userAnswer, function (data) {
-                var actionsElm = $('#actions');
-                var answerElm = $('#answer');
-
-                var directive = data["directive"];
-                var directedPrompt = data["directedPrompt"];
-                
-                // Handle correct answer
-                if (directive === "accept") {
-                    $('#answer-container').hide();
-                    var answered = `Answered: ${userAnswer}`;
-                    actionsElm.prepend(`<p>${answered}</p>`);
-                    if (beforePower) {
-                        actionsElm.prepend("<p>Answered correctly for 15 points</p>");
-                    } else {
-                        actionsElm.prepend("<p>Answered correctly for 10 points</p>");
-                    }
-                    answerElm.html(answer);
-                    $('#question').html(question);
-
-                    reading = false;
-                    startedReading = false;
-                    buzzing = false;
-                } 
-                // Handle prompt for more specific answer
-                else if (directive === "prompt") {
-                    var answered = `Answered: ${userAnswer}`;
-                    actionsElm.prepend(`<p>${answered}</p>`);
-                    actionsElm.prepend("<p>prompted</p>");
-                    if (directedPrompt) {
-                        var prompt = `Prompt: ${directedPrompt}`
-                        actionsElm.prepend(`<p>${prompt}</p>`);
-                    }
-                } 
-                // Handle incorrect answer
-                else if (directive === "reject") {
-                    $('#answer-container').hide();
-                    var answered = `Answered: ${userAnswer}`;
-                    actionsElm.prepend(`<p>${answered}</p>`);
-                    actionsElm.prepend("<p>Answered incorrectly for no penalty</p>");
-                    answerElm.html(answer);
-                    $('#question').html(question);
-
-                    reading = false;
-                    startedReading = false;
-                    buzzing = false;
+    // Question Reading Functions
+    function print(words) {
+        if (state.reading) {
+            if (words[state.wordindex]) {
+                if (words[state.wordindex] === "(*)</b>") {
+                    state.beforePower = false;
+                } else {
+                    elements.question.append(words[state.wordindex] + " ");
                 }
-            });
-        }
-    });
+            }
+            state.wordindex += 1;
 
-    // Event listener for new question (N key)
-    document.addEventListener('keydown', (event) => {
-        if (!startedReading) {
-            if (event.key === 'n') {
-                getTossup(function (tossup) {
-                    question = removePrefix(tossup["question"], "<b>");
-                    answer = tossup["answer"];
-                    questionId = tossup["_id"];
-                    const questionArray = question.split(" ");
-
-                    // Displays question words one at a time with delay
-                    var print = (words) => {
-                        if (reading) {
-                            var questionElm = $('#question');
-                            if (words[wordindex]) {
-                                if (words[wordindex] === "(*)</b>") { beforePower = false; }
-                                else { questionElm.append(words[wordindex] + " "); }
-                            }
-                            wordindex += 1;
-                
-                            if (wordindex < words.length) {
-                                setTimeout(() => print(words), 200);
-                            } else {
-                                reading = false;
-                                buzzable = true;
-                            }
-                        }
-                    }
-                
-                    // Initializes question reading state and UI
-                    var readQuestion = () => {
-                        startedReading = true;
-                        reading = true;
-                        buzzable = true;
-                        wordindex = 0;
-                
-                        $('#question').html("")
-                        $('#answer').html("")
-                
-                        var actionsElm = $('#actions');
-                        actionsElm.prepend("<p>started reading</p>");
-                
-                        print(questionArray);
-                    }
-            
-                    readQuestion()
-                });
+            if (state.wordindex < words.length) {
+                setTimeout(() => print(words), 200);
+            } else {
+                state.reading = false;
+                state.buzzable = true;
             }
         }
-    });
+    }
 
-    // Event listener for buzz attempt (Space key)
+    function readQuestion() {
+        state.startedReading = true;
+        state.reading = true;
+        state.buzzable = true;
+        state.wordindex = 0;
+
+        elements.question.html("");
+        elements.answer.html("");
+        elements.actions.prepend("<p>started reading</p>");
+
+        print(state.question.split(" "));
+    }
+
+    // User Action Handlers
+    function userBuzz() {
+        state.buzzable = false;
+        state.buzzing = true;
+        state.reading = false;
+        
+        elements.actions.prepend("<p>buzzed</p>");
+        elements.answerContainer.show();
+        elements.answerInput.focus();
+    }
+
+    function handleAnswer(userAnswer) {
+        checkAnswer(state.questionId, userAnswer, function(data) {
+            const { directive, directedPrompt } = data;
+            
+            // Log the answer
+            elements.actions.prepend(`<p>Answered: ${userAnswer}</p>`);
+
+            switch (directive) {
+                case "accept":
+                    elements.answerContainer.hide();
+                    elements.actions.prepend(
+                        `<p>Answered correctly for ${state.beforePower ? "15" : "10"} points</p>`
+                    );
+                    elements.answer.html(state.answer);
+                    elements.question.html(state.question);
+                    
+                    // Reset state
+                    state.reading = false;
+                    state.startedReading = false;
+                    state.buzzing = false;
+                    break;
+
+                case "prompt":
+                    elements.actions.prepend("<p>prompted</p>");
+                    if (directedPrompt) {
+                        elements.actions.prepend(`<p>Prompt: ${directedPrompt}</p>`);
+                    }
+                    break;
+
+                case "reject":
+                    elements.answerContainer.hide();
+                    elements.actions.prepend("<p>Answered incorrectly for no penalty</p>");
+                    elements.answer.html(state.answer);
+                    elements.question.html(state.question);
+                    
+                    // Reset state
+                    state.reading = false;
+                    state.startedReading = false;
+                    state.buzzing = false;
+                    break;
+            }
+        });
+    }
+
+    // Event Listeners
     document.addEventListener('keydown', (event) => {
-        if (event.key === ' ') {
-            if(buzzable) { userBuzz() }
+        // Answer submission (Enter)
+        if (state.buzzing && event.key === 'Enter') {
+            const userAnswer = elements.answerInput.val();
+            elements.answerInput.val('');
+            handleAnswer(userAnswer);
+        }
+        
+        // New question (N)
+        if (!state.startedReading && event.key === 'n') {
+            getTossup(function(tossup) {
+                state.question = removePrefix(tossup["question"], "<b>");
+                state.answer = tossup["answer"];
+                state.questionId = tossup["_id"];
+                readQuestion();
+            });
+        }
+        
+        // Buzz (Space)
+        if (event.key === ' ' && state.buzzable) {
+            userBuzz();
         }
     });
 });
