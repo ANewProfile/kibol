@@ -23,20 +23,39 @@ app.get('/checkanswer', (req, res) => {
             return res.status(500).send({ error: "Invalid Tossup ID" });
         }
 
-        const tossupById = JSON.parse(body);
-        const tossupAnswer = tossupById.tossup.answer;
-        const guess = encodeURIComponent(req.query.guess); // Encode the guess parameter
-
-        const directiveResponseURL = 'https://qbreader.org/api/check-answer?answerline=' + encodeURIComponent(tossupAnswer) + '&givenAnswer=' + guess;
-
-        request(directiveResponseURL, (error, response, body) => {
-            if (error) {
-                return res.status(500).send(error);
+        try {
+            const tossupById = JSON.parse(body);
+            
+            // Check if the response has the expected structure
+            if (!tossupById || !tossupById.tossup || !tossupById.tossup.answer) {
+                return res.status(500).send({ error: "Invalid response format from tossup-by-id API" });
             }
 
-            const directiveResponse = JSON.parse(body);
-            res.json(directiveResponse);
-        });
+            const tossupAnswer = tossupById.tossup.answer;
+            const guess = encodeURIComponent(req.query.guess); // Encode the guess parameter
+
+            const directiveResponseURL = 'https://qbreader.org/api/check-answer?answerline=' + encodeURIComponent(tossupAnswer) + '&givenAnswer=' + guess;
+
+            request(directiveResponseURL, (error, response, body) => {
+                if (error) {
+                    return res.status(500).send(error);
+                }
+
+                // Check if the response status code is not successful (not in 2xx range)
+                if (response.statusCode >= 300) {
+                    return res.status(response.statusCode).send(body);
+                }
+
+                try {
+                    const directiveResponse = JSON.parse(body);
+                    res.json(directiveResponse);
+                } catch (e) {
+                    res.status(500).send({ error: "Failed to parse check-answer API response" });
+                }
+            });
+        } catch (e) {
+            res.status(500).send({ error: "Failed to parse tossup-by-id API response" });
+        }
     });
 });
 
