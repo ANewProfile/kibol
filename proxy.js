@@ -11,18 +11,20 @@ app.get('/tossup', (req, res) => {
 });
 
 app.get('/checkanswer', (req, res) => {
-    console.log(`req.query: ${req.query.questionid}, ${req.query.guess}`);
     const tossupByIdURL = 'https://qbreader.org/api/tossup-by-id?id=' + req.query.questionid;
-    console.log(`tossupByIdURL: ${tossupByIdURL}`);
 
     request(tossupByIdURL, (error, response, body) => {
         if (error) {
             return res.status(500).send(error);
         }
 
+        // Handle "Invalid Tossup ID" response
+        if (body === "Invalid Tossup ID") {
+            return res.status(500).send({ error: "Invalid Tossup ID" });
+        }
+
         const tossupById = JSON.parse(body);
-        const tossupAnswer = tossupById["tossup"]["answer"];
-        console.log(`tossupAnswer: ${tossupAnswer}`);
+        const tossupAnswer = tossupById.tossup.answer;
         const guess = encodeURIComponent(req.query.guess); // Encode the guess parameter
 
         const directiveResponseURL = 'https://qbreader.org/api/check-answer?answerline=' + encodeURIComponent(tossupAnswer) + '&givenAnswer=' + guess;
@@ -41,3 +43,5 @@ app.get('/checkanswer', (req, res) => {
 app.listen(3000, () => {
     console.log('Proxy server running on http://localhost:3000');
 });
+
+module.exports = app;
