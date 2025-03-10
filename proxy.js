@@ -5,6 +5,51 @@ const app = express();
 
 app.use(cors());
 
+// 1. Add error handling middleware
+const errorHandler = (err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Internal Server Error', details: err.message });
+};
+
+// 2. Extract API configuration
+const API_CONFIG = {
+    baseUrl: 'https://qbreader.org/api',
+    endpoints: {
+        randomTossup: '/random-tossup',
+        tossupById: '/tossup-by-id',
+        checkAnswer: '/check-answer'
+    },
+    defaultParams: {
+        difficulties: '1,2,3,4,5,6',
+        minYear: '2010',
+        maxYear: '2024',
+        powermarkOnly: 'true',
+        standardOnly: 'true'
+    }
+};
+
+// 3. Implement request validation middleware
+const validateRequest = (req, res, next) => {
+    if (req.path === '/checkanswer' && (!req.query.questionid || !req.query.guess)) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+    }
+    next();
+};
+
+// 4. Add response caching
+const cache = new Map();
+const cacheMiddleware = (req, res, next) => {
+    const key = req.originalUrl;
+    if (cache.has(key)) {
+        return res.json(cache.get(key));
+    }
+    next();
+};
+
+app.use(validateRequest);
+app.use(cacheMiddleware);
+app.use(errorHandler);
+
 app.get('/tossup', (req, res) => {
     const url = 'https://qbreader.org/api/random-tossup?difficulties=1,2,3,4,5,6&minYear=2010&maxYear=2024&powermarkOnly=true&standardOnly=true';
     req.pipe(request(url)).pipe(res);

@@ -1,16 +1,18 @@
 // API Functions
-async function getTossup(cb) {
-    const response = await fetch('http://localhost:3000/tossup');
-    const fullData = await response.json();
-    const readableData = fullData["tossups"][0];
-    cb(readableData);
-}
+const APIService = {
+    async getTossup() {
+        const response = await fetch('http://localhost:3000/tossup');
+        const data = await response.json();
+        return data.tossups[0];
+    },
 
-async function checkAnswer(questionId, guess, cb) {
-    const response = await fetch(`http://localhost:3000/checkanswer?questionid=${questionId}&guess=${guess}`);
-    const data = await response.json();
-    cb(data);
-}
+    async checkAnswer(questionId, guess) {
+        const response = await fetch(
+            `http://localhost:3000/checkanswer?questionid=${encodeURIComponent(questionId)}&guess=${encodeURIComponent(guess)}`
+        );
+        return response.json();
+    }
+};
 
 // Utility Functions
 function removePrefix(text, prefix) {
@@ -20,20 +22,80 @@ function removePrefix(text, prefix) {
     return text;
 }
 
+// 1. Create a QuestionState class to manage state
+class QuestionState {
+    constructor() {
+        this.startedReading = false;
+        this.reading = false;
+        this.buzzable = false;
+        this.buzzing = false;
+        this.wordindex = 0;
+        this.beforePower = true;
+        this.questionId = null;
+        this.answer = null;
+        this.question = null;
+    }
+
+    reset() {
+        Object.assign(this, new QuestionState());
+    }
+}
+
+// 2. Create a UI manager
+class UIManager {
+    constructor(elements) {
+        this.elements = elements;
+    }
+
+    updateQuestion(text) {
+        this.elements.question.html(text);
+    }
+
+    updateAnswer(text) {
+        this.elements.answer.html(text);
+    }
+
+    showAnswerContainer() {
+        this.elements.answerContainer.show();
+        this.elements.answerInput.focus();
+    }
+
+    hideAnswerContainer() {
+        this.elements.answerContainer.hide();
+    }
+
+    addAction(text) {
+        this.elements.actions.prepend(`<p>${text}</p>`);
+    }
+}
+
+// 3. Implement event handling with proper debouncing
+const EventHandler = {
+    handleKeydown: _.debounce((event, state, ui) => {
+        switch(event.key) {
+            case 'n':
+                if (!state.startedReading) {
+                    handleNewQuestion(state, ui);
+                }
+                break;
+            case ' ':
+                if (state.buzzable) {
+                    handleBuzz(state, ui);
+                }
+                break;
+            case 'Enter':
+                if (state.buzzing) {
+                    handleAnswer(state, ui);
+                }
+                break;
+        }
+    }, 100)
+};
+
 // Main Application
 $(document).ready(() => {
     // State Variables
-    let state = {
-        startedReading: false,
-        reading: false,
-        buzzable: false,
-        buzzing: false,
-        wordindex: 0,
-        beforePower: true,
-        questionId: null,
-        answer: null,
-        question: null
-    };
+    const state = new QuestionState();
 
     // UI Elements
     const elements = {
@@ -44,8 +106,10 @@ $(document).ready(() => {
         actions: $('#actions')
     };
 
+    const uiManager = new UIManager(elements);
+
     // Initialize UI
-    elements.answerContainer.hide();
+    uiManager.hideAnswerContainer();
 
     // Question Reading Functions
     function print(words) {
@@ -138,26 +202,6 @@ $(document).ready(() => {
 
     // Event Listeners
     document.addEventListener('keydown', (event) => {
-        // Answer submission (Enter)
-        if (state.buzzing && event.key === 'Enter') {
-            const userAnswer = elements.answerInput.val();
-            elements.answerInput.val('');
-            handleAnswer(userAnswer);
-        }
-        
-        // New question (N)
-        if (!state.startedReading && event.key === 'n') {
-            getTossup(function(tossup) {
-                state.question = removePrefix(tossup["question"], "<b>");
-                state.answer = tossup["answer"];
-                state.questionId = tossup["_id"];
-                readQuestion();
-            });
-        }
-        
-        // Buzz (Space)
-        if (event.key === ' ' && state.buzzable) {
-            userBuzz();
-        }
+        EventHandler.handleKeydown(event, state, uiManager);
     });
 });
