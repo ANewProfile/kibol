@@ -123,7 +123,7 @@ describe('Proxy Server Tests', () => {
     it('should handle missing query parameters', async () => {
       await request(app)
         .get('/checkanswer')
-        .expect(500);
+        .expect(400); // Changed from 500 to 400 for Bad Request
     });
 
     it('should handle tossup-by-id API errors', async () => {

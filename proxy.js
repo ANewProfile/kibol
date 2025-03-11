@@ -16,15 +16,24 @@ const API_CONFIG = {
     baseUrl: 'https://qbreader.org/api',
     endpoints: {
         randomTossup: '/random-tossup',
+        randomBonus: '/random-bonus',
         tossupById: '/tossup-by-id',
         checkAnswer: '/check-answer'
     },
     defaultParams: {
         difficulties: '1,2,3,4,5,6',
         minYear: '2010',
-        maxYear: '2024',
+        maxYear: '2025',
         powermarkOnly: 'true',
         standardOnly: 'true'
+    },
+    bonusParams: {
+        difficulties: '1,2,3,4,5,6',
+        minYear: '2010',
+        maxYear: '2025',
+        powermarkOnly: 'true',
+        standardOnly: 'true',
+        threePartBonuses: 'true'
     }
 };
 
@@ -51,12 +60,17 @@ app.use(cacheMiddleware);
 app.use(errorHandler);
 
 app.get('/tossup', (req, res) => {
-    const url = 'https://qbreader.org/api/random-tossup?difficulties=1,2,3,4,5,6&minYear=2010&maxYear=2024&powermarkOnly=true&standardOnly=true';
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.randomTossup}?${API_CONFIG.bonusParams}`;
+    req.pipe(request(url)).pipe(res);
+});
+
+app.get('/bonus', (req, res) => {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.randomBonus}?${API_CONFIG.bonusParams}`;
     req.pipe(request(url)).pipe(res);
 });
 
 app.get('/checkanswer', (req, res) => {
-    const tossupByIdURL = 'https://qbreader.org/api/tossup-by-id?id=' + req.query.questionid;
+    const tossupByIdURL = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.tossupById}?id=${req.query.questionid}`;
 
     request(tossupByIdURL, (error, response, body) => {
         if (error) {
@@ -79,7 +93,7 @@ app.get('/checkanswer', (req, res) => {
             const tossupAnswer = tossupById.tossup.answer;
             const guess = encodeURIComponent(req.query.guess); // Encode the guess parameter
 
-            const directiveResponseURL = 'https://qbreader.org/api/check-answer?answerline=' + encodeURIComponent(tossupAnswer) + '&givenAnswer=' + guess;
+            const directiveResponseURL = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.checkAnswer}?answerline=${encodeURIComponent(tossupAnswer)}&givenAnswer=${guess}`;
 
             request(directiveResponseURL, (error, response, body) => {
                 if (error) {
