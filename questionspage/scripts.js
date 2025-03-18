@@ -45,6 +45,7 @@ function print(words, state, elements) {
         } else {
             state.reading = false;
             state.buzzable = true;
+            state.doneReadingTossup = true;
         }
     }
 }
@@ -53,6 +54,7 @@ function readQuestion(state, ui) {
     state.startedReading = true;
     state.reading = true;
     state.buzzable = true;
+    state.doneReadingTossup = false;
     state.wordindex = 0;
 
     ui.elements.question.html("");
@@ -60,13 +62,13 @@ function readQuestion(state, ui) {
     ui.addAction("started reading");
 
     print(state.question.split(" "), state, ui.elements);
-    state.doneReadingTossup = true;
 }
 
 function readBonus(state, ui) {
     state.startedReading = true;
     state.reading = true;
     state.buzzable = true;
+    state.doneReadingTossup = false;
     state.wordindex = 0;
 
     ui.elements.question.html("");
@@ -76,8 +78,20 @@ function readBonus(state, ui) {
     print(state.question.split(" "), state, ui.elements);
 }
 
+// Function to update the leaderboard
+function updateLeaderboard(globalState, ui) {
+    // Clear existing scores but keep the header
+    const leaderboardScores = ui.elements.leaderboard.children().not(':first');
+    leaderboardScores.remove();
+    
+    // Add scores for each user
+    for (const [username, score] of Object.entries(globalState.users)) {
+        ui.elements.leaderboard.append(`<p>${username}: ${score}</p>`);
+    }
+}
+
 // Handler Functions
-async function handleNewQuestion(state, ui) {
+async function handleNewQuestion(state, globalState, ui) {
     try {
         const tossup = await APIService.getTossup();
         const bonuses = await APIService.getBonus();
@@ -86,12 +100,14 @@ async function handleNewQuestion(state, ui) {
         state.answer = tossup.answer;
         state.questionId = tossup._id;
         readQuestion(state, ui);
+        globalState.currentQuestion = state;
+        // Removed updateLeaderboard call from here
     } catch (error) {
         console.error('Error fetching new question:', error);
     }
 }
 
-function handleBuzz(state, ui) {
+function handleBuzz(state, globalState, ui) {
     state.buzzable = false;
     state.buzzing = true;
     state.reading = false;
@@ -102,14 +118,20 @@ function handleBuzz(state, ui) {
     ui.showAnswerContainer();
 }
 
-async function handleAnswer(state, ui) {
+async function handleAnswer(state, globalState, ui) {
     const userAnswer = ui.elements.answerInput.val();
     if (userAnswer === "") {
         ui.addAction(`Answered: `);
         ui.hideAnswerContainer();
 
-        if (state.doneReadingTossup) { ui.addAction("Answered incorrectly for no penalty"); }
-        else if (!state.doneReadingTossup) { ui.addAction("Answered incorrectly for -5 points"); }
+        if (state.doneReadingTossup) {
+            ui.addAction("Answered incorrectly for no penalty");
+        }
+        else if (!state.doneReadingTossup) {
+            ui.addAction("Answered incorrectly for -5 points");
+            globalState.users['username'] -= 5;
+            updateLeaderboard(globalState, ui); // Update after point deduction
+        }
         else { throw new Error("state.doneReadingTossup is not true or false"); }
         
         ui.updateAnswer(state.answer);
@@ -125,10 +147,13 @@ async function handleAnswer(state, ui) {
 
         switch (data.directive) {
             case "accept":
+                let questionValue = state.beforePower ? 15 : 10;
                 ui.hideAnswerContainer();
-                ui.addAction(`Answered correctly for ${state.beforePower ? "15" : "10"} points`);
+                ui.addAction(`Answered correctly for ${questionValue} points`);
                 ui.updateAnswer(state.answer);
                 ui.updateQuestion(state.question);
+                globalState.users['username'] += questionValue; // Add points to user
+                updateLeaderboard(globalState, ui); // Update after points awarded
                 state.reset();
                 break;
 
@@ -141,8 +166,14 @@ async function handleAnswer(state, ui) {
 
             case "reject":
                 ui.hideAnswerContainer();
-                if (state.doneReadingTossup) { ui.addAction("Answered incorrectly for no penalty"); }
-                else if (!state.doneReadingTossup) { ui.addAction("Answered incorrectly for -5 points"); }
+                if (state.doneReadingTossup) {
+                    ui.addAction("Answered incorrectly for no penalty");
+                }
+                else if (!state.doneReadingTossup) {
+                    ui.addAction("Answered incorrectly for -5 points");
+                    globalState.users['username'] -= 5;
+                    updateLeaderboard(globalState, ui); // Update after point deduction
+                }
                 else { throw new Error("state.doneReadingTossup is not true or false"); }
                 ui.updateAnswer(state.answer);
                 ui.updateQuestion(state.question);
@@ -156,21 +187,21 @@ async function handleAnswer(state, ui) {
 
 // Event handling with proper debouncing
 const EventHandler = {
-    handleKeydown: _.debounce((event, state, ui) => {
+    handleKeydown: _.debounce((event, state, globalState, ui) => {
         switch(event.key) {
             case 'n':
                 if (!state.startedReading) {
-                    handleNewQuestion(state, ui);
+                    handleNewQuestion(state, globalState, ui);
                 }
                 break;
             case ' ':
                 if (state.buzzable) {
-                    handleBuzz(state, ui);
+                    handleBuzz(state, globalState, ui);
                 }
                 break;
             case 'Enter':
                 if (state.buzzing) {
-                    handleAnswer(state, ui);
+                    handleAnswer(state, globalState, ui);
                 }
                 break;
         }
@@ -195,6 +226,15 @@ class QuestionState {
 
     reset() {
         Object.assign(this, new QuestionState());
+    }
+}
+
+class GlobalState {
+    constructor(questionState) {  // Take questionState as parameter
+        this.currentQuestion = questionState;
+        this.users = {
+            'username': 0  // Initialize with default user
+        };
     }
 }
 
@@ -228,18 +268,22 @@ class UIManager {
 // Main Application
 $(document).ready(() => {
     const state = new QuestionState();
+    const globalState = new GlobalState(state);  // Pass state to GlobalState
+    
     const elements = {
         answerContainer: $('#answer-container'),
         answerInput: $('#answer-input'),
         question: $('#question'),
         answer: $('#answer'),
-        actions: $('#actions')
+        actions: $('#actions'),
+        leaderboard: $('#leaderboard')
     };
+    
     const uiManager = new UIManager(elements);
 
     uiManager.hideAnswerContainer();
 
     document.addEventListener('keydown', (event) => {
-        EventHandler.handleKeydown(event, state, uiManager);
+        EventHandler.handleKeydown(event, state, globalState, uiManager);
     });
 });
