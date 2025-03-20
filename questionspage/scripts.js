@@ -12,9 +12,9 @@ const APIService = {
         return data.bonuses[0];
     },
 
-    async checkAnswer(questionId, guess) {
+    async checkAnswer(questionId, guess, isBonus=false, bonusPart=0) {
         const response = await fetch(
-            `http://localhost:3000/checkanswer?questionid=${encodeURIComponent(questionId)}&guess=${encodeURIComponent(guess)}`
+            `http://localhost:3000/checkanswer?questionid=${encodeURIComponent(questionId)}&guess=${encodeURIComponent(guess)}&isBonus=${encodeURIComponent(isBonus)}&bonusPart=${encodeURIComponent(bonusPart)}`
         );
         return response.json();
     }
@@ -50,7 +50,7 @@ function print(words, state, elements) {
     }
 }
 
-function readQuestion(state, ui) {
+function readTossup(state, ui) {
     state.startedReading = true;
     state.reading = true;
     state.buzzable = true;
@@ -59,9 +59,11 @@ function readQuestion(state, ui) {
 
     ui.elements.question.html("");
     ui.elements.answer.html("");
-    ui.addAction("started reading");
+    ui.addAction("started reading tossup");
 
-    print(state.question.split(" "), state, ui.elements);
+    // Use the removePrefix function directly instead of as a method
+    const processedQuestion = removePrefix(state.question, "<b>");
+    print(processedQuestion.split(" "), state, ui.elements);
 }
 
 function readBonus(state, ui) {
@@ -73,9 +75,11 @@ function readBonus(state, ui) {
 
     ui.elements.question.html("");
     ui.elements.answer.html("");
-    ui.addAction("started reading");
+    ui.addAction("started reading bonus");
 
-    print(state.question.split(" "), state, ui.elements);
+    ui.elements.question.append(state.bonuses.leadin);
+    ui.elements.question.append('<br>');
+    ui.elements.question.append(state.bonuses.parts[0]);
 }
 
 // Function to update the leaderboard
@@ -95,13 +99,12 @@ async function handleNewQuestion(state, globalState, ui) {
     try {
         const tossup = await APIService.getTossup();
         const bonuses = await APIService.getBonus();
-        state.question = removePrefix(tossup.question, "<b>");
+        state.question = tossup.question;  // Store the raw question
         state.bonuses = bonuses;
         state.answer = tossup.answer;
         state.questionId = tossup._id;
-        readQuestion(state, ui);
+        readTossup(state, ui);
         globalState.currentQuestion = state;
-        // Removed updateLeaderboard call from here
     } catch (error) {
         console.error('Error fetching new question:', error);
     }
@@ -113,7 +116,7 @@ function handleBuzz(state, globalState, ui) {
     state.reading = false;
     
     ui.addAction("buzzed");
-    ui.elements.question.append("(#) ");
+    if (!state.bonus) { ui.elements.question.append("(#) "); }
     console.log(state.answer);  // Log the answer (for testing)
     ui.showAnswerContainer();
 }
@@ -136,26 +139,41 @@ async function handleAnswer(state, globalState, ui) {
         
         ui.updateAnswer(state.answer);
         ui.updateQuestion(state.question);
-        state.reset();
+        state.reset(except=['bonuses']);
         return;
     }
     ui.elements.answerInput.val(''); // Clear input field
 
     try {
-        const data = await APIService.checkAnswer(state.questionId, userAnswer);
+        var data = null;
+        if (!state.bonus) { data = await APIService.checkAnswer(state.questionId, userAnswer, false); }
+        else { data = await APIService.checkAnswer(state.bonuses._id, userAnswer, true, state.bonusPart); }
         ui.addAction(`Answered: ${userAnswer}`);
 
         switch (data.directive) {
             case "accept":
-                let questionValue = state.beforePower ? 15 : 10;
-                ui.hideAnswerContainer();
-                ui.addAction(`Answered correctly for ${questionValue} points`);
-                ui.updateAnswer(state.answer);
-                ui.updateQuestion(state.question);
-                globalState.users['username'] += questionValue; // Add points to user
-                updateLeaderboard(globalState, ui); // Update after points awarded
-                state.reset();
-                break;
+                if (state.bonus) {
+                    let questionValue = 10;
+                    ui.hideAnswerContainer();
+                    ui.addAction(`Answered correctly for ${questionValue} points`);
+                    ui.updateAnswer(state.answer);
+                    globalState.users['username'] += questionValue; // Add points to user
+                    updateLeaderboard(globalState, ui); // Update after points awarded
+                    state.bonusPart++; // TODO: handle if part is 3
+                    break;
+                }
+                else {
+                    let questionValue = state.beforePower ? 15 : 10;
+                    ui.hideAnswerContainer();
+                    ui.addAction(`Answered correctly for ${questionValue} points`);
+                    ui.updateAnswer(state.answer);
+                    ui.updateQuestion(state.question);
+                    globalState.users['username'] += questionValue; // Add points to user
+                    updateLeaderboard(globalState, ui); // Update after points awarded
+                    state.reset(except=['bonuses']);
+                    state.bonus = true;
+                    break;
+                }
 
             case "prompt":
                 ui.addAction("prompted");
@@ -165,20 +183,29 @@ async function handleAnswer(state, globalState, ui) {
                 break;
 
             case "reject":
-                ui.hideAnswerContainer();
-                if (state.doneReadingTossup) {
+                if (state.bonus) {
+                    ui.hideAnswerContainer();
                     ui.addAction("Answered incorrectly for no penalty");
+                    ui.updateAnswer(state.answer);
+                    state.bonusPart++;  // TODO: handle if part is 3
+                    break;
                 }
-                else if (!state.doneReadingTossup) {
-                    ui.addAction("Answered incorrectly for -5 points");
-                    globalState.users['username'] -= 5;
-                    updateLeaderboard(globalState, ui); // Update after point deduction
+                else {
+                    ui.hideAnswerContainer();
+                    if (state.doneReadingTossup) {
+                        ui.addAction("Answered incorrectly for no penalty");
+                    }
+                    else if (!state.doneReadingTossup) {
+                        ui.addAction("Answered incorrectly for -5 points");
+                        globalState.users['username'] -= 5;
+                        updateLeaderboard(globalState, ui); // Update after point deduction
+                    }
+                    else { throw new Error("state.doneReadingTossup is not true or false"); }
+                    ui.updateAnswer(state.answer);
+                    ui.updateQuestion(state.question);
+                    state.reset(except=['bonuses']);
+                    break;
                 }
-                else { throw new Error("state.doneReadingTossup is not true or false"); }
-                ui.updateAnswer(state.answer);
-                ui.updateQuestion(state.question);
-                state.reset();
-                break;
         }
     } catch (error) {
         console.error('Error checking answer:', error);
@@ -191,7 +218,10 @@ const EventHandler = {
         switch(event.key) {
             case 'n':
                 if (!state.startedReading) {
-                    handleNewQuestion(state, globalState, ui);
+                    if (!state.bonus) { handleNewQuestion(state, globalState, ui); }
+                    else {
+                        readBonus(state, ui);
+                    }
                 }
                 break;
             case ' ':
@@ -221,11 +251,20 @@ class QuestionState {
         this.answer = null;
         this.question = null;
         this.bonuses = null;
+        this.bonus = false;
         this.doneReadingTossup = false;
+        this.bonusPart = 0;
     }
 
-    reset() {
+    reset(except=[]) {
+        var excepted = {};
+        for (const prop of except) {
+            excepted[prop] = this[prop];
+        }
         Object.assign(this, new QuestionState());
+        for (const prop of except) {
+            this[prop] = excepted[prop];
+        }
     }
 }
 
