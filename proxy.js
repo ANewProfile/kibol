@@ -18,6 +18,7 @@ const API_CONFIG = {
         randomTossup: '/random-tossup',
         randomBonus: '/random-bonus',
         tossupById: '/tossup-by-id',
+        bonusById: '/bonus-by-id',
         checkAnswer: '/check-answer'
     },
     defaultParams: {
@@ -60,7 +61,7 @@ app.use(cacheMiddleware);
 app.use(errorHandler);
 
 app.get('/tossup', (req, res) => {
-    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.randomTossup}?${API_CONFIG.bonusParams}`;
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.randomTossup}?${API_CONFIG.defaultParams}`;
     req.pipe(request(url)).pipe(res);
 });
 
@@ -70,52 +71,119 @@ app.get('/bonus', (req, res) => {
 });
 
 app.get('/checkanswer', (req, res) => {
-    const tossupByIdURL = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.tossupById}?id=${req.query.questionid}`;
-
-    request(tossupByIdURL, (error, response, body) => {
-        if (error) {
-            return res.status(500).send(error);
-        }
-
-        // Handle "Invalid Tossup ID" response
-        if (body === "Invalid Tossup ID") {
-            return res.status(500).send({ error: "Invalid Tossup ID" });
-        }
-
-        try {
-            const tossupById = JSON.parse(body);
-            
-            // Check if the response has the expected structure
-            if (!tossupById || !tossupById.tossup || !tossupById.tossup.answer) {
-                return res.status(500).send({ error: "Invalid response format from tossup-by-id API" });
+    if (req.query.isBonus === 'true') {
+        const bonusByIdURL = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.bonusById}?id=${req.query.questionid}`;
+        
+        // Add logging to debug the response
+        console.log('Fetching bonus:', bonusByIdURL);
+        
+        request(bonusByIdURL, (error, response, body) => {
+            if (error) {
+                console.error('Bonus fetch error:', error);
+                return res.status(500).send(error);
             }
 
-            const tossupAnswer = tossupById.tossup.answer;
-            const guess = encodeURIComponent(req.query.guess); // Encode the guess parameter
+            console.log('Bonus API response:', body);
 
-            const directiveResponseURL = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.checkAnswer}?answerline=${encodeURIComponent(tossupAnswer)}&givenAnswer=${guess}`;
+            // Handle "Invalid Bonus ID" response
+            if (body === "Invalid Bonus ID") {
+                return res.status(500).send({ error: "Invalid Bonus ID" });
+            }
 
-            request(directiveResponseURL, (error, response, body) => {
-                if (error) {
-                    return res.status(500).send(error);
+            try {
+                const bonusById = JSON.parse(body);
+                
+                // Check if the response has the expected structure
+                if (!bonusById || !bonusById.bonus.leadin || !bonusById.bonus.parts || !bonusById.bonus.answers) {
+                    console.error('Invalid bonus structure:', bonusById);
+                    return res.status(500).send({ error: "Invalid response format from bonus-by-id API" });
+                }
+    
+                // Get answer from the correct path in the response
+                const bonusAnswer = bonusById.bonus.answers[parseInt(req.query.bonusPart)];
+                if (!bonusAnswer) {
+                    console.error('Invalid bonus part:', req.query.bonusPart);
+                    return res.status(500).send({ error: "Invalid bonus part" });
                 }
 
-                // Check if the response status code is not successful (not in 2xx range)
-                if (response.statusCode >= 300) {
-                    return res.status(response.statusCode).send(body);
+                const guess = encodeURIComponent(req.query.guess);
+                const directiveResponseURL = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.checkAnswer}?answerline=${encodeURIComponent(bonusAnswer)}&givenAnswer=${guess}`;
+                
+                console.log('Checking answer:', directiveResponseURL);
+
+                request(directiveResponseURL, (error, response, body) => {
+                    if (error) {
+                        console.error('Answer check error:', error);
+                        return res.status(500).send(error);
+                    }
+    
+                    if (response.statusCode >= 300) {
+                        console.error('Answer check bad status:', response.statusCode, body);
+                        return res.status(response.statusCode).send(body);
+                    }
+    
+                    try {
+                        const directiveResponse = JSON.parse(body);
+                        res.json(directiveResponse);
+                    } catch (e) {
+                        console.error('Failed to parse check-answer response:', e);
+                        res.status(500).send({ error: "Failed to parse check-answer API response" });
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to parse bonus response:', e);
+                res.status(500).send({ error: "Failed to parse bonus-by-id API response" });
+            }
+        });
+    }
+    else {
+        const tossupByIdURL = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.tossupById}?id=${req.query.questionid}`;
+
+        request(tossupByIdURL, (error, response, body) => {
+            if (error) {
+                return res.status(500).send(error);
+            }
+
+            // Handle "Invalid Tossup ID" response
+            if (body === "Invalid Tossup ID") {
+                return res.status(500).send({ error: "Invalid Tossup ID" });
+            }
+
+            try {
+                const tossupById = JSON.parse(body);
+                
+                // Check if the response has the expected structure
+                if (!tossupById || !tossupById.tossup || !tossupById.tossup.answer) {
+                    return res.status(500).send({ error: "Invalid response format from tossup-by-id API" });
                 }
 
-                try {
-                    const directiveResponse = JSON.parse(body);
-                    res.json(directiveResponse);
-                } catch (e) {
-                    res.status(500).send({ error: "Failed to parse check-answer API response" });
-                }
-            });
-        } catch (e) {
-            res.status(500).send({ error: "Failed to parse tossup-by-id API response" });
-        }
-    });
+                const tossupAnswer = tossupById.tossup.answer;
+                const guess = encodeURIComponent(req.query.guess); // Encode the guess parameter
+
+                const directiveResponseURL = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.checkAnswer}?answerline=${encodeURIComponent(tossupAnswer)}&givenAnswer=${guess}`;
+
+                request(directiveResponseURL, (error, response, body) => {
+                    if (error) {
+                        return res.status(500).send(error);
+                    }
+
+                    // Check if the response status code is not successful (not in 2xx range)
+                    if (response.statusCode >= 300) {
+                        return res.status(response.statusCode).send(body);
+                    }
+
+                    try {
+                        const directiveResponse = JSON.parse(body);
+                        res.json(directiveResponse);
+                    } catch (e) {
+                        res.status(500).send({ error: "Failed to parse check-answer API response" });
+                    }
+                });
+            } catch (e) {
+                res.status(500).send({ error: "Failed to parse tossup-by-id API response" });
+            }
+        });
+    }
 });
 
 app.listen(3000, () => {
