@@ -241,6 +241,14 @@ const EventHandler = {
         if (!state.startedReading) {
           if (!state.bonus) {
             handleNewQuestion(state, globalState, ui);
+          } else {
+            if (state.bonusPart <= 2) {
+              readBonus(state, ui);
+            } else {
+              state.bonusPart = 0;
+              state.bonus = false;
+              handleNewQuestion(state, globalState, ui);
+            }
           }
         }
         break;
