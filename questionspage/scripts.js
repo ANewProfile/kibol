@@ -87,14 +87,19 @@ function readBonus(state, ui) {
 
 // Function to update the leaderboard
 function updateLeaderboard(globalState, ui) {
-  // Clear existing scores but keep the header
-  const leaderboardScores = ui.elements.leaderboard.children().not(":first");
-  leaderboardScores.remove();
-
-  // Add scores for each user
-  for (const [username, score] of Object.entries(globalState.users)) {
-    ui.elements.leaderboard.append(`<p>${username}: ${score}</p>`);
-  }
+  const leaderboardElement = ui.elements.leaderboard;
+  leaderboardElement.html('<h4><b>Leaderboard</b></h4>');
+  
+  Object.entries(globalState.users)
+    .sort(([,a], [,b]) => b - a)
+    .forEach(([username, score]) => {
+      leaderboardElement.append(`
+        <div class="score-entry">
+          <span class="username">${username}</span>
+          <span class="score">${score}</span>
+        </div>
+      `);
+    });
 }
 
 // Handler Functions
@@ -102,7 +107,17 @@ async function handleNewQuestion(state, globalState, ui) {
   try {
     const tossup = await APIService.getTossup();
     const bonuses = await APIService.getBonus();
-    state.question = tossup.question; // Store the raw question
+    
+    // Emit new question to all users in room
+    socket.emit('newQuestion', {
+      roomCode: globalState.roomCode,
+      question: tossup.question,
+      answer: tossup.answer,
+      questionId: tossup._id,
+      bonuses: bonuses
+    });
+
+    state.question = tossup.question;
     state.bonuses = bonuses;
     state.answer = tossup.answer;
     state.questionId = tossup._id;
@@ -168,56 +183,35 @@ async function handleAnswer(state, globalState, ui) {
       case "accept":
         if (state.bonus) {
           let questionValue = 10;
-          ui.hideAnswerContainer();
-          ui.addAction(`Answered correctly for ${questionValue} points`);
-          ui.updateAnswer(state.answer);
-          globalState.users["username"] += questionValue; // Add points to user
-          updateLeaderboard(globalState, ui); // Update after points awarded
-          state.bonusPart++;
-          break;
+          socket.emit('updateScore', {
+            roomCode: globalState.roomCode,
+            username: globalState.username,
+            points: questionValue
+          });
         } else {
           let questionValue = state.beforePower ? 15 : 10;
-          ui.hideAnswerContainer();
-          ui.addAction(`Answered correctly for ${questionValue} points`);
-          ui.updateAnswer(state.answer);
-          ui.updateQuestion(state.question);
-          globalState.users["username"] += questionValue; // Add points to user
-          updateLeaderboard(globalState, ui); // Update after points awarded
-          state.reset((except = ["bonuses"]));
-          state.bonus = true;
-          break;
+          socket.emit('updateScore', {
+            roomCode: globalState.roomCode,
+            username: globalState.username,
+            points: questionValue
+          });
         }
-
+        break;
       case "prompt":
         ui.addAction("prompted");
         if (data.directedPrompt) {
           ui.addAction(`Prompt: ${data.directedPrompt}`);
         }
         break;
-
       case "reject":
-        if (state.bonus) {
-          ui.hideAnswerContainer();
-          ui.addAction("Answered incorrectly for no penalty");
-          ui.updateAnswer(state.answer);
-          state.bonusPart++;
-          break;
-        } else {
-          ui.hideAnswerContainer();
-          if (state.doneReadingTossup) {
-            ui.addAction("Answered incorrectly for no penalty");
-          } else if (!state.doneReadingTossup) {
-            ui.addAction("Answered incorrectly for -5 points");
-            globalState.users["username"] -= 5;
-            updateLeaderboard(globalState, ui); // Update after point deduction
-          } else {
-            throw new Error("state.doneReadingTossup is not true or false");
-          }
-          ui.updateAnswer(state.answer);
-          ui.updateQuestion(state.question);
-          state.reset((except = ["bonuses"]));
-          break;
+        if (!state.bonus && !state.doneReadingTossup) {
+          socket.emit('updateScore', {
+            roomCode: globalState.roomCode,
+            username: globalState.username,
+            points: -5
+          });
         }
+        break;
     }
   } catch (error) {
     console.error("Error checking answer:", error);
@@ -296,13 +290,21 @@ class QuestionState {
   }
 }
 
+// Add Socket.IO initialization
+const socket = io('http://localhost:5000');
+const roomCode = sessionStorage.getItem('roomCode');
+const username = sessionStorage.getItem('username');
+
+if (!roomCode || !username) {
+  window.location.href = '/kibol'; // Redirect to landing if no room/username
+}
+
 class GlobalState {
   constructor(questionState) {
-    // Take questionState as parameter
     this.currentQuestion = questionState;
-    this.users = {
-      username: 0, // Initialize with default user
-    };
+    this.users = {};  // Will store all users' scores
+    this.roomCode = roomCode;
+    this.username = username;
   }
 }
 
@@ -353,5 +355,30 @@ $(document).ready(() => {
 
   document.addEventListener("keydown", (event) => {
     EventHandler.handleKeydown(event, state, globalState, uiManager);
+  });
+
+  // Socket event handlers
+  socket.emit('joinQuestionRoom', { roomCode, username });
+
+  socket.on('userJoined', (data) => {
+    // Update users list
+    globalState.users = data.users;
+    updateLeaderboard(globalState, uiManager);
+  });
+
+  socket.on('questionUpdate', (data) => {
+    // Sync question state across all users
+    state.question = data.question;
+    state.answer = data.answer;
+    state.questionId = data.questionId;
+    if (data.bonuses) {
+      state.bonuses = data.bonuses;
+    }
+    readTossup(state, uiManager);
+  });
+
+  socket.on('scoreUpdate', (data) => {
+    globalState.users = data.users;
+    updateLeaderboard(globalState, uiManager);
   });
 });
