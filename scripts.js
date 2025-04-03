@@ -1,31 +1,39 @@
-var URLACCESS = "http://127.0.0.1:5000/"
+const socket = io('http://127.0.0.1:8080', {
+    transports: ['websocket'],
+    upgrade: false
+});
 
-joinRoom = () => {
-    $.ajax({
-        url: URLACCESS + "checkroomexists",
-        type: 'GET',
-        dataType: 'json',
-        data: {
-            "roomid": document.getElementById("joinCode").value,
-        },
-        success: function (data) {
-            // if exists:
-                // check # users
-                // if === 6, alert("Room is full")
-                // else, add user to room
-            // if not:
-                // create room
-                // add user to SQL database
-            if (data['exists'] === false) {
-                alert("Room does not exist");
-            } else {
-                alert(`Room exists and has ${data['users']} users`);
-            }
-        },
-        error: function (error) {
-            console.error('Error:', error);
-        }
-    })
+function generateRoomCode() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
 
-    window.location.href = '/kibol/questionspage'
+function createRoom() {
+    const username = document.getElementById('username').value.trim();
+    if (!username) {
+        alert('Please enter a username');
+        return;
+    }
+    
+    const roomCode = generateRoomCode();
+    sessionStorage.setItem('username', username);
+    sessionStorage.setItem('roomCode', roomCode);
+    sessionStorage.setItem('isHost', 'true');
+    
+    window.location.href = 'questionspage/index.html';
+}
+
+function joinRoom() {
+    const username = document.getElementById('username').value.trim();
+    const roomCode = document.getElementById('roomCode').value.trim();
+    
+    if (!username || !roomCode) {
+        alert('Please enter both username and room code');
+        return;
+    }
+    
+    sessionStorage.setItem('username', username);
+    sessionStorage.setItem('roomCode', roomCode);
+    sessionStorage.setItem('isHost', 'false');
+    
+    window.location.href = 'questionspage/index.html';
 }

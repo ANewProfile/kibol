@@ -1,0 +1,26 @@
+#game-container {
+    display: flex;
+    gap: 2rem;
+}
+
+#question-container {
+    flex: 2;
+}
+
+#leaderboard {
+    flex: 1;
+    padding: 1rem;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+}
+
+.player {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    border-bottom: 1px solid #ddd;
+}
+
+.player:last-child {
+    border-bottom: none;
+}

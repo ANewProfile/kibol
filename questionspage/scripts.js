@@ -30,40 +30,94 @@ function removePrefix(text, prefix) {
 
 // Question Reading Functions
 function print(words, state, elements) {
-  if (state.reading) {
-    if (words[state.wordindex]) {
-      if (words[state.wordindex] === "(*)</b>") {
+  console.log("Print function called", {
+    reading: state.reading,
+    wordIndex: state.wordindex,
+    totalWords: words.length
+  });
+
+  // Ensure we're in reading mode
+  if (!state.reading) {
+    console.error("Not in reading mode, forcing reading mode");
+    state.reading = true;
+  }
+
+  // Check if we have words left to print
+  if (state.wordindex < words.length) {
+    const currentWord = words[state.wordindex];
+    console.log("Printing word:", currentWord);
+    
+    if (currentWord === "(*)</b>") {
+      state.beforePower = false;
+    } else {
+      elements.question.append(currentWord + " ");
+    }
+    
+    state.wordindex++;
+
+    // Schedule next word
+    setTimeout(() => {
+      print(words, state, elements);
+    }, 200);
+  } else {
+    console.log("Finished reading");
+    state.reading = false;
+    state.buzzable = true;
+    state.doneReadingTossup = true;
+  }
+}
+
+function readTossup(state, ui) {
+  console.log('READING TOSSUP:', state.question);
+  
+  if (!state.question) {
+    console.error("No question to read!");
+    return;
+  }
+
+  // Clear previous content
+  ui.elements.question.html("");
+  ui.elements.answer.html();
+  
+  // Process question text
+  let processedQuestion = state.question;
+  if (processedQuestion.startsWith("<b>")) {
+    processedQuestion = removePrefix(processedQuestion, "<b>");
+  }
+  
+  const words = processedQuestion.split(" ").filter(word => word.length > 0);
+  console.log("Words to read:", words);
+  
+  let currentIndex = 0;
+  
+  function displayNextWord() {
+    if (!state.reading) {
+      console.log("Reading stopped");
+      return;
+    }
+
+    if (currentIndex < words.length) {
+      const word = words[currentIndex];
+      console.log('Displaying word:', word);
+      
+      if (word === "(*)</b>") {
         state.beforePower = false;
       } else {
-        elements.question.append(words[state.wordindex] + " ");
+        ui.elements.question.append(word + " ");
       }
-    }
-    state.wordindex += 1;
-
-    if (state.wordindex < words.length) {
-      setTimeout(() => print(words, state, elements), 200);
+      
+      currentIndex++;
+      setTimeout(displayNextWord, 200);
     } else {
+      console.log("Finished reading");
       state.reading = false;
       state.buzzable = true;
       state.doneReadingTossup = true;
     }
   }
-}
-
-function readTossup(state, ui) {
-  state.startedReading = true;
-  state.reading = true;
-  state.buzzable = true;
-  state.doneReadingTossup = false;
-  state.wordindex = 0;
-
-  ui.elements.question.html("");
-  ui.elements.answer.html("");
-  ui.addAction("started reading tossup");
-
-  // Use the removePrefix function directly instead of as a method
-  const processedQuestion = removePrefix(state.question, "<b>");
-  print(processedQuestion.split(" "), state, ui.elements);
+  
+  // Start the reading process
+  displayNextWord();
 }
 
 function readBonus(state, ui) {
@@ -91,25 +145,68 @@ function updateLeaderboard(globalState, ui) {
   const leaderboardScores = ui.elements.leaderboard.children().not(":first");
   leaderboardScores.remove();
 
+  // Sort users by score in descending order
+  const sortedUsers = Object.entries(globalState.users)
+    .sort(([, scoreA], [, scoreB]) => scoreB - scoreA);
+
   // Add scores for each user
-  for (const [username, score] of Object.entries(globalState.users)) {
-    ui.elements.leaderboard.append(`<p>${username}: ${score}</p>`);
+  for (const [username, score] of sortedUsers) {
+    ui.elements.leaderboard.append(`
+      <div class="leaderboard-entry">
+        <span class="username">${username}</span>
+        <span class="score">${score}</span>
+      </div>
+    `);
   }
 }
 
 // Handler Functions
+function startReadingQuestion(state, ui) {
+  console.log("Starting reading question, isHost:", isHost); // Debug log
+  
+  if (isHost) {
+    socket.emit('start_reading', {
+      room: roomCode,
+      questionState: {
+        question: state.question,
+        bonuses: state.bonuses,
+        answer: state.answer,
+        questionId: state.questionId
+      }
+    });
+  }
+}
+
 async function handleNewQuestion(state, globalState, ui) {
   try {
+    if (!isHost) {
+      console.log("Non-host tried to fetch new question - ignoring");
+      return;
+    }
+
+    console.log("FETCHING NEW QUESTION");
     const tossup = await APIService.getTossup();
     const bonuses = await APIService.getBonus();
-    state.question = tossup.question; // Store the raw question
-    state.bonuses = bonuses;
-    state.answer = tossup.answer;
-    state.questionId = tossup._id;
-    readTossup(state, ui);
-    globalState.currentQuestion = state;
+    
+    // First sync the question with all clients
+    socket.emit('sync_question', {
+      room: roomCode,
+      questionState: {
+        question: tossup.question,
+        bonuses: bonuses,
+        answer: tossup.answer,
+        questionId: tossup._id
+      }
+    });
+    
+    // Wait a bit to ensure sync completed
+    setTimeout(() => {
+      // Then trigger reading for all clients
+      socket.emit('start_reading', { room: roomCode });
+    }, 1000);
+    
   } catch (error) {
-    console.error("Error fetching new question:", error);
+    console.error("Error fetching question:", error);
   }
 }
 
@@ -128,7 +225,9 @@ function handleBuzz(state, globalState, ui) {
 }
 
 async function handleAnswer(state, globalState, ui) {
+  const username = sessionStorage.getItem('username');
   const userAnswer = ui.elements.answerInput.val();
+  
   if (userAnswer === "") {
     ui.addAction(`Answered: `);
     ui.hideAnswerContainer();
@@ -137,61 +236,47 @@ async function handleAnswer(state, globalState, ui) {
       ui.addAction("Answered incorrectly for no penalty");
     } else if (!state.doneReadingTossup) {
       ui.addAction("Answered incorrectly for -5 points");
-      globalState.users["username"] -= 5;
+      globalState.updateScore(username, -5);
       updateLeaderboard(globalState, ui); // Update after point deduction
-    } else {
-      throw new Error("state.doneReadingTossup is not true or false");
     }
 
     ui.updateAnswer(state.answer);
     ui.updateQuestion(state.question);
-    state.reset((except = ["bonuses"]));
+    state.reset(except = ["bonuses"]);
     return;
   }
+
   ui.elements.answerInput.val(""); // Clear input field
 
   try {
-    var data = null;
-    if (!state.bonus) {
-      data = await APIService.checkAnswer(state.questionId, userAnswer, false);
-    } else {
-      data = await APIService.checkAnswer(
-        state.bonuses._id,
-        userAnswer,
-        true,
-        state.bonusPart,
-      );
-    }
+    const data = await APIService.checkAnswer(
+      state.questionId, 
+      userAnswer, 
+      state.bonus, 
+      state.bonusPart
+    );
+
     ui.addAction(`Answered: ${userAnswer}`);
 
     switch (data.directive) {
       case "accept":
         if (state.bonus) {
-          let questionValue = 10;
+          const points = 10;
           ui.hideAnswerContainer();
-          ui.addAction(`Answered correctly for ${questionValue} points`);
+          ui.addAction(`Answered correctly for ${points} points`);
           ui.updateAnswer(state.answer);
-          globalState.users["username"] += questionValue; // Add points to user
-          updateLeaderboard(globalState, ui); // Update after points awarded
+          globalState.updateScore(username, points);
+          updateLeaderboard(globalState, ui);
           state.bonusPart++;
-          break;
         } else {
-          let questionValue = state.beforePower ? 15 : 10;
+          const points = state.beforePower ? 15 : 10;
           ui.hideAnswerContainer();
-          ui.addAction(`Answered correctly for ${questionValue} points`);
+          ui.addAction(`Answered correctly for ${points} points`);
           ui.updateAnswer(state.answer);
           ui.updateQuestion(state.question);
-          globalState.users["username"] += questionValue; // Add points to user
-          updateLeaderboard(globalState, ui); // Update after points awarded
-          state.reset((except = ["bonuses"]));
-          state.bonus = true;
-          break;
-        }
-
-      case "prompt":
-        ui.addAction("prompted");
-        if (data.directedPrompt) {
-          ui.addAction(`Prompt: ${data.directedPrompt}`);
+          globalState.updateScore(username, points);
+          updateLeaderboard(globalState, ui);
+          state.reset(except = ["bonuses"]);
         }
         break;
 
@@ -201,23 +286,20 @@ async function handleAnswer(state, globalState, ui) {
           ui.addAction("Answered incorrectly for no penalty");
           ui.updateAnswer(state.answer);
           state.bonusPart++;
-          break;
         } else {
           ui.hideAnswerContainer();
           if (state.doneReadingTossup) {
             ui.addAction("Answered incorrectly for no penalty");
-          } else if (!state.doneReadingTossup) {
-            ui.addAction("Answered incorrectly for -5 points");
-            globalState.users["username"] -= 5;
-            updateLeaderboard(globalState, ui); // Update after point deduction
           } else {
-            throw new Error("state.doneReadingTossup is not true or false");
+            ui.addAction("Answered incorrectly for -5 points");
+            globalState.updateScore(username, -5);
+            updateLeaderboard(globalState, ui);
           }
           ui.updateAnswer(state.answer);
           ui.updateQuestion(state.question);
-          state.reset((except = ["bonuses"]));
-          break;
+          state.reset(except = ["bonuses"]);
         }
+        break;
     }
   } catch (error) {
     console.error("Error checking answer:", error);
@@ -227,29 +309,11 @@ async function handleAnswer(state, globalState, ui) {
 // Event handling with proper debouncing
 const EventHandler = {
   handleKeydown: _.debounce((event, state, globalState, ui) => {
+    console.log("Key pressed:", event.key); // Debug log
     switch (event.key) {
       case "n":
-        if (state.bonus) {
-          if (state.bonusPart <= 2) {
-            readBonus(state, ui);
-          } else {
-            state.bonusPart = 0;
-            state.bonus = false;
-            handleNewQuestion(state, globalState, ui);
-          }
-        }
-        if (!state.startedReading) {
-          if (!state.bonus) {
-            handleNewQuestion(state, globalState, ui);
-          } else {
-            if (state.bonusPart <= 2) {
-              readBonus(state, ui);
-            } else {
-              state.bonusPart = 0;
-              state.bonus = false;
-              handleNewQuestion(state, globalState, ui);
-            }
-          }
+        if (!state.startedReading && isHost) {
+          handleNewQuestion(state, globalState, ui);
         }
         break;
       case " ":
@@ -298,11 +362,47 @@ class QuestionState {
 
 class GlobalState {
   constructor(questionState) {
-    // Take questionState as parameter
     this.currentQuestion = questionState;
-    this.users = {
-      username: 0, // Initialize with default user
-    };
+    this.users = {};
+    
+    // Get username from session storage
+    const username = sessionStorage.getItem('username');
+    if (username) {
+      this.users[username] = 0;
+    }
+  }
+
+  // Update to handle multiple users
+  syncUsers(players) {
+    // Extract just the scores from the player objects
+    const scores = {};
+    for (const [username, playerData] of Object.entries(players)) {
+      scores[username] = playerData.score;
+    }
+    this.users = scores;
+    updateLeaderboard(this, uiManager);
+  }
+
+  addUser(username) {
+    if (!this.users[username]) {
+      this.users[username] = 0;
+      updateLeaderboard(this, uiManager);
+    }
+  }
+
+  updateScore(username, points) {
+    if (this.users[username] !== undefined) {
+      this.users[username] += points;
+      // Emit score update to server
+      socket.emit('update_score', {
+        room: roomCode,
+        username: username,
+        score: this.users[username]
+      });
+      updateLeaderboard(this, uiManager);
+      return true;
+    }
+    return false;
   }
 }
 
@@ -333,11 +433,19 @@ class UIManager {
   }
 }
 
+// At the top of the file, add these global variables
+let socket;
+let globalState;
+let uiManager;
+const isHost = sessionStorage.getItem('isHost') === 'true';
+const username = sessionStorage.getItem('username');
+const roomCode = sessionStorage.getItem('roomCode');
+
 // Main Application
 $(document).ready(() => {
   const state = new QuestionState();
-  const globalState = new GlobalState(state); // Pass state to GlobalState
-
+  globalState = new GlobalState(state);
+  
   const elements = {
     answerContainer: $("#answer-container"),
     answerInput: $("#answer-input"),
@@ -347,11 +455,124 @@ $(document).ready(() => {
     leaderboard: $("#leaderboard"),
   };
 
-  const uiManager = new UIManager(elements);
-
+  uiManager = new UIManager(elements);
   uiManager.hideAnswerContainer();
+
+  // Initialize socket globally
+  socket = io('http://localhost:8080', {
+    transports: ['websocket'],
+    upgrade: false
+  });
+
+  socket.on('connect', () => {
+    console.log('Socket connected successfully');
+    console.log('Is host:', isHost);
+    console.log('Room code:', roomCode);
+    socket.emit('join', { 
+      room: roomCode, 
+      username: username 
+    });
+  });
+
+  socket.on('player_update', (data) => {
+    globalState.syncUsers(data.players);
+    updateLeaderboard(globalState, uiManager);
+  });
+
+  socket.on('sync_question', (data) => {
+    console.log('SYNC QUESTION RECEIVED:', data);
+    const questionState = data.questionState;
+    
+    // Update state for all clients
+    state.question = questionState.question;
+    state.bonuses = questionState.bonuses;
+    state.answer = questionState.answer;
+    state.questionId = questionState.questionId;
+    
+    // Reset reading state
+    state.startedReading = false;
+    state.reading = false;
+    state.buzzable = false;
+    state.doneReadingTossup = false;
+    state.wordindex = 0;
+    state.beforePower = true;
+    
+    globalState.currentQuestion = state;
+
+    console.log("State after sync:", state); // Debug log
+  });
+
+  socket.on('start_reading', (data) => {
+    console.log('START READING RECEIVED');
+    state.startedReading = true;
+    state.reading = true;
+    readTossup(state, uiManager);
+  });
+
+  socket.on('start_game', () => {
+    startGame();
+  });
+
+  // Initialize game if host
+  if (isHost) {
+    socket.emit('start_game', { room: roomCode });
+  }
 
   document.addEventListener("keydown", (event) => {
     EventHandler.handleKeydown(event, state, globalState, uiManager);
   });
 });
+
+function startGame() {
+  if (isHost) {
+    handleNewQuestion(state, globalState, uiManager);
+  }
+}
+
+function displayQuestion(index) {
+  if (index >= questions.length) {
+    endGame();
+    return;
+  }
+  
+  const question = questions[index];
+  document.getElementById('question').textContent = question.question;
+  
+  const optionsContainer = document.getElementById('options');
+  optionsContainer.innerHTML = '';
+  
+  question.options.forEach((option, i) => {
+    const button = document.createElement('button');
+    button.textContent = option;
+    button.onclick = () => checkAnswer(i);
+    optionsContainer.appendChild(button);
+  });
+}
+
+function checkAnswer(selectedIndex) {
+  const question = questions[currentQuestion];
+  const correct = selectedIndex === question.correct;
+  
+  if (correct) {
+    score += 100;
+    socket.emit('update_score', {
+      room: roomCode,
+      username: username,
+      score: score
+    });
+  }
+  
+  currentQuestion++;
+  if (isHost) {
+    socket.emit('sync_question', {
+      room: roomCode,
+      currentQuestion: currentQuestion
+    });
+  }
+  displayQuestion(currentQuestion);
+}
+
+function endGame() {
+  document.getElementById('question').textContent = 'Game Over!';
+  document.getElementById('options').innerHTML = '';
+}

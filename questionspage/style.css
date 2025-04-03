@@ -4,19 +4,34 @@ body {
 }
 
 #leaderboard {
-    position: fixed; /* Keep it in place */
-    right: 0; /* Align to the right */
-    top: 0; /* Start from the top */
-    width: 250px; /* Set a width for the sidebar */
-    height: calc(100% - 20px); /* Full height of the viewport minus the margin */
-    overflow-y: auto; /* Allow scrolling if content overflows */
-    background-color: #f8f9fa; /* Optional: Background color */
-    border-left: 1px solid #dee2e6; /* Optional: Border for separation */
-    z-index: 1000; /* Ensure it stays above other content */
-    color: #222222; /* Set the text color (so it's readable) */
-    text-align: center; /* Center the content */
-    padding: 20px; /* Add some padding */
-    margin-bottom: 20px; /* Adjust this value as needed */
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-radius: 8px;
+    min-width: 200px;
+}
+
+.leaderboard-entry {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.leaderboard-entry:last-child {
+    border-bottom: none;
+}
+
+.username {
+    color: #fff;
+    font-weight: 500;
+}
+
+.score {
+    color: #4CAF50;
+    font-weight: bold;
 }
 
 #questions-box {

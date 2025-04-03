@@ -4,18 +4,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Better QBReader</title>
+    <title>Kibol</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 </head>
 
 <body>
-    <div id="joinRoom">
-        <label for="joinRoom" class="joinRoom">Join or create a room!</label>
-        <input type="text" placeholder="Room code" class="joinRoom" id="joinCode">
-        <button onclick="joinRoom()" class="joinRoom" id="joinButton">Join</button>
+    <div class="container">
+        <h1>Welcome to Kibol</h1>
+        <div class="form-group">
+            <input type="text" id="username" placeholder="Enter your username" required>
+        </div>
+        <div class="form-group">
+            <input type="text" id="roomCode" placeholder="Enter room code (optional)">
+        </div>
+        <div class="button-group">
+            <button onclick="createRoom()">Create Room</button>
+            <button onclick="joinRoom()">Join Room</button>
+        </div>
     </div>
-
+    <!-- Add Socket.IO client script before your scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script src="scripts.js"></script>
 </body>
 
