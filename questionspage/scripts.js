@@ -68,16 +68,11 @@ function print(words, state, elements) {
 }
 
 function readTossup(state, ui) {
-  console.log('READING TOSSUP:', state.question);
-  
-  if (!state.question) {
-    console.error("No question to read!");
-    return;
-  }
+  if (!state.question) return;
 
   // Clear previous content
   ui.elements.question.html("");
-  ui.elements.answer.html();
+  ui.elements.answer.html("");
   
   // Process question text
   let processedQuestion = state.question;
@@ -86,19 +81,13 @@ function readTossup(state, ui) {
   }
   
   const words = processedQuestion.split(" ").filter(word => word.length > 0);
-  console.log("Words to read:", words);
-  
   let currentIndex = 0;
   
   function displayNextWord() {
-    if (!state.reading) {
-      console.log("Reading stopped");
-      return;
-    }
+    if (!state.reading) return;
 
     if (currentIndex < words.length) {
       const word = words[currentIndex];
-      console.log('Displaying word:', word);
       
       if (word === "(*)</b>") {
         state.beforePower = false;
@@ -109,14 +98,12 @@ function readTossup(state, ui) {
       currentIndex++;
       setTimeout(displayNextWord, 200);
     } else {
-      console.log("Finished reading");
       state.reading = false;
       state.buzzable = true;
       state.doneReadingTossup = true;
     }
   }
   
-  // Start the reading process
   displayNextWord();
 }
 
@@ -179,12 +166,8 @@ function startReadingQuestion(state, ui) {
 
 async function handleNewQuestion(state, globalState, ui) {
   try {
-    if (!isHost) {
-      console.log("Non-host tried to fetch new question - ignoring");
-      return;
-    }
+    if (!isHost) return;
 
-    console.log("FETCHING NEW QUESTION");
     const tossup = await APIService.getTossup();
     const bonuses = await APIService.getBonus();
     
@@ -201,7 +184,6 @@ async function handleNewQuestion(state, globalState, ui) {
     
     // Wait a bit to ensure sync completed
     setTimeout(() => {
-      // Then trigger reading for all clients
       socket.emit('start_reading', { room: roomCode });
     }, 1000);
     
@@ -309,7 +291,6 @@ async function handleAnswer(state, globalState, ui) {
 // Event handling with proper debouncing
 const EventHandler = {
   handleKeydown: _.debounce((event, state, globalState, ui) => {
-    console.log("Key pressed:", event.key); // Debug log
     switch (event.key) {
       case "n":
         if (!state.startedReading && isHost) {
@@ -480,7 +461,6 @@ $(document).ready(() => {
   });
 
   socket.on('sync_question', (data) => {
-    console.log('SYNC QUESTION RECEIVED:', data);
     const questionState = data.questionState;
     
     // Update state for all clients
@@ -498,12 +478,9 @@ $(document).ready(() => {
     state.beforePower = true;
     
     globalState.currentQuestion = state;
-
-    console.log("State after sync:", state); // Debug log
   });
 
   socket.on('start_reading', (data) => {
-    console.log('START READING RECEIVED');
     state.startedReading = true;
     state.reading = true;
     readTossup(state, uiManager);
